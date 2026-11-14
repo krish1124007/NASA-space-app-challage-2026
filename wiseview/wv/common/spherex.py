@@ -37,7 +37,7 @@ DETECTOR_RE = re.compile(r"D([1-6])(?=[_-])")
 VISIT_RE = re.compile(r"(?:^|_)D[1-6](?:[_-]|$)")
 
 # Bump when the rendering algorithm changes so cached PNGs are rebuilt.
-RENDER_VERSION = 2
+RENDER_VERSION = 3
 
 
 def field_id(ra: float, dec: float) -> str:
@@ -342,7 +342,9 @@ def _stretch(data: np.ndarray, vmin: float | None, vmax: float | None,
         return zeros, 0.0, 1.0
     sample = data[finite]
     if vmin is None or vmax is None or not (math.isfinite(vmin) and math.isfinite(vmax)) or vmax <= vmin:
-        vmin, vmax = np.percentile(sample, [2.0, 99.5])
+        # Robust percentiles keep the galaxy core from saturating while
+        # ignoring sky background and bad pixels.
+        vmin, vmax = np.percentile(sample, [0.5, 99.8])
     if vmax <= vmin:
         vmax = vmin + 1.0
     scaled = np.clip((data - vmin) / (vmax - vmin), 0.0, 1.0)

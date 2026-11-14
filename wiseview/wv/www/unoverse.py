@@ -1,5 +1,6 @@
 from io import BytesIO, StringIO
 import csv
+import os
 import threading
 import traceback
 import urllib
@@ -51,6 +52,9 @@ app.config['PROPAGATE_EXCEPTIONS'] = True
 
 config.ensure_dirs()
 
+# Bump to invalidate browser-cached static assets after frontend changes.
+app.config["ASSET_VERSION"] = os.environ.get("WV_ASSET_VERSION", "2026.11.14")
+
 # Serialize first-time SPHEREx downloads so two browser tabs do not fetch the
 # same cutouts twice.
 _spherex_lock = threading.Lock()
@@ -60,41 +64,47 @@ def _json_error(message, status=500):
     return jsonify({"error": message}), status
 
 
-class Pawnstars_Composite(Resource):
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("ra", type=float, required=True)
-        parser.add_argument("dec", type=float, required=True)
-        parser.add_argument("size", type=int, required=True)
-        args = parser.parse_args()
+@app.get("/pawnstars")
+def pawnstars():
+    """Pan-STARRS cutout URL for the lower comparison strip."""
+    try:
+        ra = float(request.args["ra"])
+        dec = float(request.args["dec"])
+        size = int(float(request.args.get("size", 1024)))
+    except (KeyError, ValueError):
+        return _json_error("ra, dec and size are required", 400)
 
+    try:
         response = requests.get("http://ps1images.stsci.edu/cgi-bin/ps1filenames.py", params={
-            "RA": args.ra,
-            "DEC": args.dec,
+            "RA": ra,
+            "DEC": dec,
             "filters": "giy",
             "sep": "comma"
-        }, timeout=5)
+        }, timeout=10)
+        response.raise_for_status()
+    except Exception as exc:
+        return _json_error(f"Pan-STARRS lookup failed: {exc}", 502)
 
-        files = {}
-        reader = csv.DictReader(StringIO(response.content.decode("ascii")))
-        for row in reader:
-            files[row["filter"]] = row["filename"]
+    files = {}
+    reader = csv.DictReader(StringIO(response.content.decode("ascii")))
+    for row in reader:
+        files[row["filter"]] = row["filename"]
+    if not all(k in files for k in ("y", "i", "g")):
+        return _json_error("Pan-STARRS image not found for this position", 404)
 
-        url = "http://ps1images.stsci.edu/cgi-bin/fitscut.cgi?" + urllib.parse.urlencode({
-            "red": files["y"],
-            "green": files["i"],
-            "blue": files["g"],
-            "x": args.ra,
-            "y": args.dec,
-            "size": args.size,
-            "wcs": 1,
-            "asinh": True,
-            "autoscale": 98.00,
-            "output_size": 256
-        })
-        return url
-
-api.add_resource(Pawnstars_Composite, "/pawnstars")
+    url = "http://ps1images.stsci.edu/cgi-bin/fitscut.cgi?" + urllib.parse.urlencode({
+        "red": files["y"],
+        "green": files["i"],
+        "blue": files["g"],
+        "x": ra,
+        "y": dec,
+        "size": size,
+        "wcs": 1,
+        "asinh": True,
+        "autoscale": 98.00,
+        "output_size": 256
+    })
+    return jsonify({"url": url})
 
 
 class SearchV3_Page(Resource):
@@ -104,22 +114,22 @@ class SearchV3_Page(Resource):
 api.add_resource(SearchV3_Page, "/", "/wiseview-v3", "/wiseview-v2", "/wiseview")
 
 
-class Xref_Page(Resource):
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("ra", type=float, required=True)
-        parser.add_argument("dec", type=float, required=True)
-        args = parser.parse_args()
+@app.get("/xref")
+def xref_page():
+    """unWISE/Zooniverse subject cross-match for a position."""
+    try:
+        ra = float(request.args["ra"])
+        dec = float(request.args["dec"])
+    except (KeyError, ValueError):
+        return _json_error("ra and dec are required", 400)
 
-        if xref is None:
-            return jsonify({"ids": [], "note": "unWISE cross-match data not installed"})
-        try:
-            subs = xref.get_subjects_by_coordinates(args.ra, args.dec)
-        except Exception:
-            subs = []
-        return jsonify({"ids": [str(s[0]) for s in subs]})
-
-api.add_resource(Xref_Page, "/xref")
+    if xref is None:
+        return jsonify({"ids": [], "note": "unWISE cross-match data not installed"})
+    try:
+        subs = xref.get_subjects_by_coordinates(ra, dec)
+    except Exception:
+        subs = []
+    return jsonify({"ids": [str(s[0]) for s in subs]})
 
 
 class Tiles_Page(Resource):

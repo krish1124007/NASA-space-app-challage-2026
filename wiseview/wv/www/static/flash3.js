@@ -258,14 +258,34 @@ function WiseSwapper () {
     
     this.zoom_input = jQuery("#zoomInput");
     this.zoom_input.slider({
-	min: 0.5, max: 20.0,
-	step: (20.0-0.5)/((20.0-0.5)*2),
+	min: 0.1, max: 20.0,
+	step: (20.0-0.1)/((20.0-0.1)*2),
 	value: 9.0,
 	slide: function(event, ui) {
 	    jQuery("#zoomValue").text(ui.value.toFixed(1));
 	    that.updateZoom(ui.value);
 	}
     });
+
+    // Largest zoom that keeps the canvas inside the viewport.
+    this.fit_zoom = function (img_w, img_h) {
+	if (!img_w || !img_h) { return 1.0; }
+	var nav_w = jQuery("#nav-left").outerWidth() || 280,
+	    legend_w = jQuery("#epoch-legend").outerWidth() || 20,
+	    avail_w = Math.max(200, jQuery(window).width() - nav_w - legend_w - 20),
+	    avail_h = Math.max(200, jQuery(window).height() - 60);
+	return Math.max(0.1, Math.min(20.0, Math.min(avail_w / img_w, avail_h / img_h)));
+    };
+
+    // Zoom so the rendered frame fills the available screen area exactly.
+    this.fit_to_screen = function () {
+	// Keep pending_fit set until the frame size is known, so the image load
+	// handler can retry the fit.
+	if (!this.real_img_size) { return; }
+	var z = this.fit_zoom(this.real_img_size[0], this.real_img_size[1]);
+	this.update_zoom_input(z);
+	this.pending_fit = false;
+    };
     this.update_zoom_input = function (val) {
 	this.zoom_input.slider("option","value",val);
 	jQuery("#zoomValue").text(val.toFixed(1));
@@ -342,7 +362,7 @@ function WiseSwapper () {
 	    diff_window: this.diff_window_input.slider("option","value"),
 	    linear: this.linear_input.slider("option","value"),
 	    color: this.color_input.val(),
-	    zoom: zoom,
+	    zoom: this.pending_fit ? "fit" : zoom,
 	    border: this.border_input.prop("checked") ? 1 : 0,
 	    gaia: this.gaia_input.prop("checked") ? 1 : 0,
 	    invert: this.invert_input.prop("checked") ? 1 : 0,
@@ -417,6 +437,11 @@ function WiseSwapper () {
 	    // Make a guess on panstarrs size
 	    var fov = this.size_input.val(),
 		zoom = this.zoom_input.slider("option","value");
+	    if (this.pending_fit) {
+		// Fit uses the rendered frame size; until it loads, size the
+		// panstarrs strip to the viewport instead of guessing.
+		zoom = this.fit_zoom(fov/2.75, fov/2.75);
+	    }
 	    jQuery("#pawnstars img").width((fov/2.75) * zoom).height((fov/2.75) * zoom)
 	    return;
         }
@@ -451,7 +476,7 @@ function WiseSwapper () {
 	    "size": this.size_input.val()*4 // arcseconds to pixels
         }, function (response) {
 	    var new_img = document.createElement("img");
-	    new_img.setAttribute("src", response)
+	    new_img.setAttribute("src", response.url || response)
 	    jQuery("#pawnstars").empty().append(new_img);
 	    that.updateZoom()
         });
@@ -541,7 +566,7 @@ function WiseSwapper () {
 
     this.setDefaults = function () {
 	this.__setDefaults();
-        this.update_zoom_input(9);
+	this.pending_fit = true;
 	this.restart();
     };
 
@@ -660,7 +685,10 @@ function WiseSwapper () {
 	    
         this.border_input.prop("checked", (map.border || 0) == 1);
         this.gaia_input.prop("checked", (map.gaia || 0) == 1);
-        this.invert_input.prop("checked", (map.invert || 1) == 1);
+        // unWISE frames are traditionally shown inverted; SPHEREx flux maps
+        // are shown with bright = high.
+        var default_invert = (this.instrument === "spherex") ? 0 : 1;
+        this.invert_input.prop("checked", (map.invert === undefined ? default_invert : map.invert) == 1);
         this.maxdyr_input.prop("checked", (map.maxdyr || 0) == 1);
         this.scandir_input.prop("checked", (map.scandir || 0) == 1);
         this.neowise_only_input.prop("checked", (map.neowise || 0) == 1);
@@ -671,7 +699,14 @@ function WiseSwapper () {
 	this.shift_input.prop("checked", (map.shift || 0) == 1);
         this.pmra_input.val(map.pmra || 0);
         this.pmdec_input.val(map.pmdec || 0);
-        this.update_zoom_input((Number(map.zoom) || 9));
+        // "fit" (default) scales the canvas to the viewport. Explicit zoom
+	// values from a shared URL are honored as-is.
+        if (map.zoom === undefined || map.zoom === "fit") {
+	    this.pending_fit = true;
+	} else {
+	    this.update_zoom_input(Number(map.zoom) || 9);
+	    this.pending_fit = false;
+	}
         this.synth_a_input.prop("checked", (map.synth_a || 0) == 1);
         this.synth_a_sub_input.prop("checked", (map.synth_a_sub || 0) == 1);
         this.synth_a_ra_input.val(map.synth_a_ra || "");
@@ -962,7 +997,11 @@ function WiseSwapper () {
 	    jQuery(new_img).on("load", function () {
 		// TODO: Review
 		that.real_img_size = [this.width, this.height];
-		that.updateZoom();
+		if (that.pending_fit) {
+		    that.fit_to_screen();
+		} else {
+		    that.updateZoom();
+		}
 	    });
 	    that.images.push(new_img);
 	}
@@ -1057,6 +1096,9 @@ function WiseSwapper () {
 		that.updateMjds();
 		that.updateEpochs();
 		that.updateZoom();
+		if (that.pending_fit) {
+		    that.fit_to_screen();
+		}
 		jQuery("#verValue").text(spherex
 		    ? ("SPHEREx "+meta.detector+" · "+
 		       (meta.wavelength_um ? Number(meta.wavelength_um).toFixed(2)+" µm" : "full band")+
@@ -1437,6 +1479,12 @@ jQuery(function () {
     jQuery("#diffWindowInput").on("slidestop", ws.restart.bind(ws));
     jQuery("#tabs button").on("click", ws.tabClick.bind(ws));
     jQuery("#setDefaultsButton").on("click", ws.setDefaults.bind(ws));
+    jQuery("#fitButton").on("click", ws.fit_to_screen.bind(ws));
+    jQuery(window).on("resize", function () {
+	if (ws.pending_fit) {
+	    ws.fit_to_screen();
+	}
+    });
     jQuery("#diffInput").on("change", ws.showhide_diff.bind(ws));
     jQuery("#shiftInput").on("change", ws.showhide_shift.bind(ws));
     jQuery("#synthAInput").on("change", ws.showhide_synth_a.bind(ws));
