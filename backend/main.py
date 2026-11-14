@@ -6,6 +6,7 @@ difference imaging, 102-channel spectral analysis, and candidate detection.
 """
 
 from fastapi import FastAPI, Query, HTTPException, Response, UploadFile, File
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -651,6 +652,35 @@ def get_unwise_xref(
         return {"ids": [str(s[0]) for s in subs]}
     except Exception:
         return {"ids": [], "note": "unWISE cross-match unavailable"}
+
+# ---------------------------------------------------------------------------
+# Frontend SPA & Static Assets Serving (SPHEREx Explorer UI)
+# ---------------------------------------------------------------------------
+FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+if os.path.exists(FRONTEND_DIST):
+    assets_dir = os.path.join(FRONTEND_DIST, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="frontend-assets")
+
+    @app.get("/")
+    async def serve_index():
+        index_file = os.path.join(FRONTEND_DIST, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        return {"message": "SPHEREx Explorer API is running. Frontend build not found."}
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api") or full_path.startswith("media") or full_path.startswith("docs") or full_path.startswith("openapi"):
+            raise HTTPException(status_code=404, detail="Endpoint not found")
+        file_path = os.path.join(FRONTEND_DIST, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        index_file = os.path.join(FRONTEND_DIST, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        raise HTTPException(status_code=404, detail="File not found")
+
 
 
 

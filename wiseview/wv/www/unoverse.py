@@ -1,6 +1,7 @@
 from io import BytesIO, StringIO
 import csv
 import os
+import sys
 import threading
 import traceback
 import urllib
@@ -51,6 +52,28 @@ api = Api(app)
 app.config['PROPAGATE_EXCEPTIONS'] = True
 
 config.ensure_dirs()
+
+# Discovery path for SPHEREx Explorer frontend and backend
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+FRONTEND_DIST = os.path.join(ROOT_DIR, "frontend", "dist")
+
+try:
+    from backend.catalog import PRECONFIGURED_TARGETS
+    from backend.spherex_service import (
+        synthesize_astronomical_image,
+        compute_difference_image,
+        extract_candidates_from_epochs,
+        DISCOVERY_REGISTRY
+    )
+    from backend.astrometry import parse_astronomical_coordinates
+    from backend.spectrum_service import generate_spectrum_for_target
+    from backend.nasa_ingest import query_gaia_crossmatch
+    HAS_EXPLORER_BACKEND = True
+except Exception as e:
+    HAS_EXPLORER_BACKEND = False
+    print(f"Warning: SPHEREx Explorer backend routes not loaded in Flask: {e}")
 
 # Bump to invalidate browser-cached static assets after frontend changes.
 app.config["ASSET_VERSION"] = os.environ.get("WV_ASSET_VERSION", "2026.11.14")
@@ -109,9 +132,200 @@ def pawnstars():
 
 class SearchV3_Page(Resource):
     def get(self):
+        legacy = request.args.get("legacy")
+        if legacy in ("1", "true", "True"):
+            return make_response(render_template("flash3.html"))
+        index_file = os.path.join(FRONTEND_DIST, "index.html")
+        if os.path.exists(index_file):
+            with open(index_file, "r", encoding="utf-8") as f:
+                html = f.read()
+            return make_response(html, 200, {"Content-Type": "text/html; charset=utf-8"})
         return make_response(render_template("flash3.html"))
 
 api.add_resource(SearchV3_Page, "/", "/wiseview-v3", "/wiseview-v2", "/wiseview")
+
+
+@app.get("/legacy")
+def legacy_page():
+    """Access classic WiseView flash3 interface if requested."""
+    return make_response(render_template("flash3.html"))
+
+
+@app.get("/assets/<path:filename>")
+def serve_frontend_assets(filename):
+    """Serve SPHEREx Explorer bundled frontend JS/CSS assets."""
+    assets_dir = os.path.join(FRONTEND_DIST, "assets")
+    return send_from_directory(assets_dir, filename)
+
+
+# ---------------------------------------------------------------------------
+# SPHEREx Explorer Citizen Science API Integration
+# ---------------------------------------------------------------------------
+
+@app.get("/api/targets")
+def api_targets():
+    if not HAS_EXPLORER_BACKEND:
+        return jsonify([])
+    return jsonify(list(PRECONFIGURED_TARGETS.values()))
+
+
+@app.get("/api/targets/<target_id>")
+def api_target_details(target_id):
+    if not HAS_EXPLORER_BACKEND or target_id not in PRECONFIGURED_TARGETS:
+        return _json_error(f"Target '{target_id}' not found", 404)
+    return jsonify(PRECONFIGURED_TARGETS[target_id])
+
+
+@app.post("/api/search")
+def api_search():
+    if not HAS_EXPLORER_BACKEND:
+        return _json_error("Search service unavailable", 503)
+    data = request.get_json(force=True) or {}
+    query = data.get("query")
+    ra = data.get("ra")
+    dec = data.get("dec")
+    fov = float(data.get("fov_arcmin", 10.0))
+    ch = int(data.get("channel", 12))
+
+    if query:
+        q_norm = query.strip().lower()
+        for t_id, t_data in PRECONFIGURED_TARGETS.items():
+            if q_norm in t_data["name"].lower() or q_norm == t_id:
+                return jsonify({
+                    "matched_target": t_data,
+                    "is_preconfigured": True,
+                    "ra_deg": t_data["coordinates"]["ra_deg"],
+                    "dec_deg": t_data["coordinates"]["dec_deg"],
+                    "ra_sexagesimal": t_data["coordinates"]["ra_sexagesimal"],
+                    "dec_sexagesimal": t_data["coordinates"]["dec_sexagesimal"],
+                    "fov_arcmin": t_data["fov_arcmin"],
+                    "default_channel": t_data["default_channel"],
+                })
+
+    ra_str = str(ra or "")
+    dec_str = str(dec or "")
+    parsed = parse_astronomical_coordinates(ra_str, dec_str)
+    return jsonify({
+        "matched_target": None,
+        "is_preconfigured": False,
+        "ra_deg": parsed["ra_deg"],
+        "dec_deg": parsed["dec_deg"],
+        "ra_sexagesimal": parsed["ra_sexagesimal"],
+        "dec_sexagesimal": parsed["dec_sexagesimal"],
+        "fov_arcmin": fov,
+        "default_channel": ch,
+    })
+
+
+@app.get("/api/observations")
+def api_observations():
+    if not HAS_EXPLORER_BACKEND:
+        return _json_error("Observations service unavailable", 503)
+    target_id = request.args.get("target_id")
+    ra = request.args.get("ra")
+    dec = request.args.get("dec")
+    channel = int(request.args.get("channel", 12))
+    fov_arcmin = float(request.args.get("fov_arcmin", 10.0))
+    stretch = request.args.get("stretch", "asinh")
+    colormap = request.args.get("colormap", "grayscale")
+
+    if target_id and target_id in PRECONFIGURED_TARGETS:
+        t = PRECONFIGURED_TARGETS[target_id]
+        target_name = t["name"]
+        center_ra = t["coordinates"]["ra_deg"]
+        center_dec = t["coordinates"]["dec_deg"]
+        pm_ra = t["proper_motion"]["pm_ra_mas_yr"]
+        pm_dec = t["proper_motion"]["pm_dec_mas_yr"]
+        parallax = t["proper_motion"]["parallax_mas"]
+        is_var = (t["category"] == "variable")
+    else:
+        target_name = "Custom Target"
+        center_ra = float(ra or 0.0)
+        center_dec = float(dec or 0.0)
+        pm_ra, pm_dec, parallax, is_var = 0.0, 0.0, 0.0, False
+
+    epochs_meta = [
+        {"epoch_id": "EP-2025A", "obs_date": "2025-04-12T08:30:00Z", "dt_years": 0.00},
+        {"epoch_id": "EP-2025B", "obs_date": "2025-07-28T14:15:00Z", "dt_years": 0.29},
+        {"epoch_id": "EP-2025C", "obs_date": "2025-11-15T20:45:00Z", "dt_years": 0.59},
+        {"epoch_id": "EP-2026A", "obs_date": "2026-03-01T11:00:00Z", "dt_years": 0.88},
+    ]
+
+    obs_list = []
+    for ep in epochs_meta:
+        res = synthesize_astronomical_image(
+            center_ra, center_dec, channel, fov_arcmin,
+            ep["dt_years"], pm_ra, pm_dec, parallax, is_var,
+            stretch, colormap, 0
+        )
+        obs_list.append({
+            "epoch_id": ep["epoch_id"],
+            "obs_date": ep["obs_date"],
+            "channel": channel,
+            "fov_arcmin": fov_arcmin,
+            "image_url": res["image_data_uri"],
+            "metadata": res["metadata"],
+        })
+
+    candidates = extract_candidates_from_epochs(target_name, center_ra, center_dec, obs_list)
+    return jsonify({
+        "target_name": target_name,
+        "ra_deg": center_ra,
+        "dec_deg": center_dec,
+        "fov_arcmin": fov_arcmin,
+        "channel": channel,
+        "total_epochs": len(obs_list),
+        "observations": obs_list,
+        "detected_candidates": candidates,
+    })
+
+
+@app.get("/api/difference")
+def api_difference():
+    if not HAS_EXPLORER_BACKEND:
+        return _json_error("Difference engine unavailable", 503)
+    target_id = request.args.get("target_id", "wise_0855")
+    e1_idx = int(request.args.get("epoch1", 0))
+    e2_idx = int(request.args.get("epoch2", 3))
+    ch = int(request.args.get("channel", 12))
+    fov = float(request.args.get("fov_arcmin", 10.0))
+    res = compute_difference_image(target_id, e1_idx, e2_idx, ch, fov)
+    return jsonify(res)
+
+
+@app.get("/api/spectrum")
+def api_spectrum():
+    if not HAS_EXPLORER_BACKEND:
+        return _json_error("Spectrum engine unavailable", 503)
+    target_id = request.args.get("target_id")
+    ra = request.args.get("ra")
+    dec = request.args.get("dec")
+    ra_val = float(ra) if ra else None
+    dec_val = float(dec) if dec else None
+    return jsonify(generate_spectrum_for_target(target_id, ra_val, dec_val))
+
+
+@app.get("/api/crossmatch/gaia")
+def api_crossmatch_gaia():
+    try:
+        ra = float(request.args["ra"])
+        dec = float(request.args["dec"])
+        r = float(request.args.get("radius_arcmin", 6.0))
+        stars = query_gaia_crossmatch(ra, dec, r)
+        return jsonify(stars)
+    except Exception:
+        return jsonify([])
+
+
+@app.get("/api/pawnstars")
+def api_pawnstars():
+    return pawnstars()
+
+
+@app.get("/api/discoveries")
+def api_discoveries():
+    return jsonify(DISCOVERY_REGISTRY)
+
 
 
 @app.get("/xref")
