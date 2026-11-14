@@ -30,6 +30,38 @@ tr_index = None
 # Dictionary for quick coadd_id -> tr_cutout_* indices
 tr_coadd_to_index = None
 
+_loaded = False
+_load_error = None
+
+
+def ensure_loaded():
+    """Load the unWISE index files on first use.
+
+    Importing this module used to require tr_neo7_index-mjd-forward.fits and
+    tr_neo4_wcs_sorted.csv to exist, which broke the whole Flask app on a fresh
+    checkout. Missing files now produce a clear error only for unWISE routes.
+    """
+    global _loaded, _load_error
+    if _loaded:
+        if _load_error:
+            raise RuntimeError(_load_error)
+        return
+    _loaded = True
+    try:
+        from wv import config
+        import os
+        index = os.environ.get("WV_UNWISE_INDEX", config.UNWISE_INDEX)
+        wcs_index = os.environ.get("WV_UNWISE_WCS_INDEX", config.UNWISE_WCS_INDEX)
+        missing = [p for p in (index, wcs_index) if not os.path.exists(p)]
+        if missing:
+            raise FileNotFoundError(
+                "unWISE index files not found: " + ", ".join(missing)
+            )
+        __init(index, wcs_index)
+    except Exception as exc:
+        _load_error = str(exc)
+        raise RuntimeError(_load_error) from exc
+
 
 
 def build_cutout_header(coadd):
@@ -150,6 +182,7 @@ def get_tiles(ra,dec):
 
     Returns sum distance to nearest 2 edges, tile, epochs
     """
+    ensure_loaded()
     # First, get all tiles that *could* hold the position,
     # by radius    
     nearby_tiles = tile_tree.query_radius(ra,dec,tile_corner_radius)
@@ -196,4 +229,3 @@ def main():
 
 
 if __name__ == "__main__": main()
-else: __init("tr_neo7_index-mjd-forward.fits","tr_neo4_wcs_sorted.csv")

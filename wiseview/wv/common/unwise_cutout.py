@@ -92,7 +92,7 @@ def get_by_tile_epoch(coadd_id,epoch_num,ra,dec,band,size=None,fits=False,
     # Get content from S3
     sio = BytesIO()
     try:
-        s3w.bucket.download_fileobj(path_,sio)
+        s3w.ensure_bucket().download_fileobj(path_,sio)
     except Exception as e:
         raise Exception("%s %s"%(str(e),path_))
     sio.seek(0)
@@ -115,7 +115,7 @@ def get_by_tile_epoch(coadd_id,epoch_num,ra,dec,band,size=None,fits=False,
 
         # Get content from S3
         sio = BytesIO()
-        s3w.bucket.download_fileobj(path_,sio)
+        s3w.ensure_bucket().download_fileobj(path_,sio)
         sio.seek(0)
         
         gz = gzip.GzipFile(fileobj=sio,mode="rb").read()

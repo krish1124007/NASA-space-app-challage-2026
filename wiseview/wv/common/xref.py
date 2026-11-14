@@ -15,14 +15,42 @@ byw_fov = np.sqrt(((0.0975*2)**2)*2)
 
 # Hold all the subjects by center coordinate in a balltree
 subject_tree = None
+_load_error = None
+_loaded = False
+
+
+def ensure_loaded():
+    """Load the Zooniverse subject cache on first use.
+
+    The original module loaded wsubcache.csv at import time, which made the
+    whole Flask app fail on a fresh checkout. Missing data now degrades to an
+    empty result instead.
+    """
+    global subject_tree, _load_error, _loaded
+    if _loaded:
+        return subject_tree
+    _loaded = True
+    try:
+        import os
+        from wv import config
+        cachepath = os.environ.get("WV_UNWISE_SUBJECTS", config.UNWISE_SUBJECTS)
+        if os.path.exists(cachepath):
+            subject_tree = read_cache(cachepath)
+    except Exception as exc:  # missing file, unreadable CSV, ...
+        _load_error = str(exc)
+        subject_tree = None
+    return subject_tree
 
 
 def get_subjects_by_coordinates(ra,dec):
+    tree = ensure_loaded()
+    if tree is None:
+        return []
     # Get subjects within fov
-    res = subject_tree.query_radius(ra,dec,byw_fov)
+    res = tree.query_radius(ra,dec,byw_fov)
 
     # Sort by nearest
-    res = [(subject_tree.table["subject_id"][res[0][0][i]],res[1][0][i]) for i in range(len(res[0][0]))]
+    res = [(tree.table["subject_id"][res[0][0][i]],res[1][0][i]) for i in range(len(res[0][0]))]
     
     return sorted(res,key=lambda x: x[1])
 
@@ -40,9 +68,7 @@ def read_cache(cachepath):
 
 
 def __init(cachepath):
-    """Populate subject_tree"""
+    """Populate subject_tree (kept for backwards compatibility)."""
     global subject_tree
 
     subject_tree = read_cache(cachepath)
-
-__init("wsubcache.csv")

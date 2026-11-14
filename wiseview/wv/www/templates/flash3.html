@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8">
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <link rel="stylesheet" type="text/css" href="static/flash3-theme.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
     <script src="https://malsup.github.io/jquery.blockUI.js"></script>
+    <script src="static/config.js"></script>
     <script src="static/flash3.js"></script>
 	    
   </head>
@@ -31,6 +33,31 @@
           <label for="sizeInput" style="display: inline;">Field of View (arcseconds)</label>
         </div>
 	
+        <div class="row" id="instrumentRow">
+          <select class="resetters" id="instrumentInput">
+            <option value="spherex">SPHEREx (IRSA)</option>
+            <option value="unwise">unWISE (WISE)</option>
+          </select>
+          <label for="instrumentInput" style="display: inline;">Data mode</label>
+        </div>
+
+        <div class="row" id="spherexRow">
+          <select class="resetters" id="detectorInput">
+            <option value="D1">D1 · 0.75–1.11 µm</option>
+            <option value="D2" selected>D2 · 1.11–1.64 µm</option>
+            <option value="D3">D3 · 1.64–2.42 µm</option>
+            <option value="D4">D4 · 2.42–3.82 µm</option>
+            <option value="D5">D5 · 3.82–4.42 µm</option>
+            <option value="D6">D6 · 4.42–5.00 µm</option>
+          </select>
+          <label for="detectorInput" style="display: inline;">Detector</label>
+        </div>
+
+        <div class="row" id="spherexHint">
+          <input type="text" class="resetters" id="wavelengthInput" placeholder="blank = full band">
+          <label for="wavelengthInput" style="display: inline;">Wavelength (µm)</label>
+        </div>
+
         <div class="row" id="bandRow">
           <select class="resetters" id="bandInput">
             <option value=1>W1</option>
@@ -262,7 +289,8 @@
       </div>
       <div id="tabAboutDiv" class="tabBody" hidden>
         <h1>About</h1>
-        <p style="margin-top: 2px;">Images sourced by <a href="http://unwise.me">unWISE</a>[1,2,3] (top) and <a href="https://panstarrs.stsci.edu/">Pan-STARRS</a> (bottom).</p>
+        <p style="margin-top: 2px;">SPHEREx mode uses Level 2 spectral images from <a href="https://irsa.ipac.caltech.edu/">IRSA</a> (detectors D1–D6, 0.75–5.0 µm). unWISE mode uses <a href="http://unwise.me">unWISE</a> W1/W2 coadds. The bottom panel is <a href="https://panstarrs.stsci.edu/">Pan-STARRS</a>.</p>
+        <p>SPHEREx frames are cut from the IRSA cutout service, stretched with an asinh transform, and rendered to PNG. The wavelength field selects a slice of the detector's spectral axis; leave it blank for the full cutout. Gaia DR3 sources come from the Gaia TAP service and are drawn as proper-motion vectors.</p>
         <p>unWISE images are then stretched with <a href="http://docs.astropy.org/en/stable/api/astropy.visualization.AsinhStretch.html#astropy.visualization.AsinhStretch">astropy.visualization.AsinhStretch</a>, where the "Linear" slider controls the "a" parameter. "Trim Bright" changes the maximum intensity before stretching. In "percent" mode, "Trim Bright" scales to the "Trim Bright" percentile, whereas "fixed" sets an absolute maximum intensity. For example, "percent" with "99.5" caps the intensity to that of the 99.5th percentile pixel, whereas "fixed" with "1000" caps it at 1000. "adapt" attempts to find good minimum and maximum values automatically, and does not take a "Trim Bright" input.</p>
         <p>To replicate legacy wiseview behavior, use either "fixed" or "percent" (instead of legacy "Brighten"), and set "linear" = 1.</p>
         <p>Band W1 and W2 correspond to WISE bands. "Bands W1+W2" displays a color image where W1 is blue and W2 is red.</p>

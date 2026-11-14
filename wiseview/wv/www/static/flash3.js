@@ -137,6 +137,14 @@ function ComplicatedSlider (name) {
 function WiseSwapper () {
     var this_ = this, that = this;
 
+    // Runtime configuration. wv/www/static/config.js sets window.WV_CONFIG.
+    var WV = window.WV_CONFIG || {};
+    this.config = WV;
+    this.instrument = WV.defaultInstrument || "unwise";
+    // Arcseconds per rendered pixel. unWISE tiles are 2.75"/pixel; SPHEREx
+    // frames report their own scale in the response metadata.
+    this.PIXSCALE = 2.75;
+
     this.overlay_scale = 10;
     this.border_width = 3;
     
@@ -170,6 +178,9 @@ function WiseSwapper () {
     this.loc_input = jQuery("#locInput");
     this.size_input = jQuery("#sizeInput");
     this.band_input = jQuery("#bandInput");
+    this.instrument_input = jQuery("#instrumentInput");
+    this.detector_input = jQuery("#detectorInput");
+    this.wavelength_input = jQuery("#wavelengthInput");
 
     // Make Stretch (linear) slider
     this.linear_input = jQuery("#linearInput");
@@ -321,6 +332,9 @@ function WiseSwapper () {
 	    dec: dec, 
 	    size: size, 
 	    band: this.band_input.val(), 
+	    instrument: this.instrument,
+	    detector: this.detector_input.val(),
+	    wavelength: this.wavelength_input.val(),
 	    speed: this.speed_input.slider("option","value"),
 	    minbright: symexp10(this.trimbright.low()).toFixed(4),
 	    maxbright: symexp10(this.trimbright.high()).toFixed(4),
@@ -362,6 +376,23 @@ function WiseSwapper () {
 	    synth_b_mjd: this.synth_b_mjd_input.val()
         };
 	return jQuery.param(args);
+    };
+
+
+    this.updateInstrumentUI = function () {
+	var spherex = (this.instrument === "spherex");
+	jQuery("#bandRow").toggle(!spherex);
+	jQuery("#spherexRow").toggle(spherex);
+	jQuery("#spherexHint").toggle(spherex);
+	if (spherex) {
+	    var det = this.detector_input.val() || "D2",
+		ranges = WV.detectorRanges || {},
+		range = ranges[det];
+	    if (range) {
+		this.wavelength_input.attr("placeholder",
+		    Number(range[0]).toFixed(2)+" - "+Number(range[1]).toFixed(2));
+	    }
+	}
     };
     
     
@@ -589,9 +620,15 @@ function WiseSwapper () {
         });
 
 	this.v1UrlCompat(map);
+
+	this.instrument = map.instrument || (WV.defaultInstrument || "unwise");
 	
 	if (map.ra === undefined && map.dec === undefined) {
-	    this.loc_input.val("133.786245 -7.244372");
+	    if (this.instrument === "spherex") {
+		this.loc_input.val("210.80227 54.34895"); // M101, DR1 coverage
+	    } else {
+		this.loc_input.val("133.786245 -7.244372");
+	    }
 	} else {
             this.loc_input.val(unescape(map.ra) + " " + unescape(map.dec));
 	}
@@ -600,9 +637,13 @@ function WiseSwapper () {
 	    map.size = 2000;
 	}
 	
-        this.size_input.val(map.size || 176);
+        this.size_input.val(map.size || (this.instrument === "spherex" ? 600 : 176));
 	
         this.band_input.val(map.band || 2);
+        this.instrument_input.val(this.instrument);
+        this.detector_input.val(map.detector || "D2");
+        this.wavelength_input.val(map.wavelength || "");
+        this.updateInstrumentUI();
         this.update_speed_input(Number(map.speed) || 500);
         //this.color_input.val(map.color || "gray");
         
@@ -780,7 +821,7 @@ function WiseSwapper () {
 	var canvas = this.canvas[0];
 	this.update_canvas_mouse(evt);
 	if (this.canvas_mouse.drawing) {
-	    this.new_fov(this.canvas_mouse.sep*2.75*2);
+	    this.new_fov(this.canvas_mouse.sep*this.PIXSCALE*2);
 	} else if (this.canvas_mouse.down) {
 	    this.move_fov(this.size_input.val());
 	}
@@ -811,7 +852,7 @@ function WiseSwapper () {
 
     this.__world_to_pix = function (ra,dec) {
         var torad = Math.PI/180.0,
-	    scale = 3600.0/2.75,
+	    scale = 3600.0/this.PIXSCALE,
 	    ra = ra*torad,
 	    dec = dec*torad,
 	    ra0 = this.CRVAL1*torad,
@@ -839,7 +880,7 @@ function WiseSwapper () {
     this.__pix_to_world = function (x,y) {
         var // Radians
 	    torad = Math.PI/180.0,
-	    scale = 3600.0/2.75,
+	    scale = 3600.0/this.PIXSCALE,
 	    // Un-fits-nudge
 	    x = x+0.5,
 	    y = y-0.5,
@@ -910,9 +951,14 @@ function WiseSwapper () {
 
     this.__get_cutouts = function (meta) {
 	// Get all the cutouts
+	var mediaBase = WV.unwiseMediaBase || "https://amnh-citsci-public.s3-us-west-2.amazonaws.com/";
 	for (var e = 0; e < meta["ims"].length; e++) {
+	    var im = meta["ims"][e];
+	    // Local/absolute URLs are used as-is; unWISE keys are prefixed with the
+	    // configured public bucket.
+	    var src = (im.indexOf("/") === 0 || im.indexOf("http") === 0) ? im : mediaBase + im;
 	    new_img = document.createElement("img");
-	    new_img.setAttribute("src", "https://amnh-citsci-public.s3-us-west-2.amazonaws.com/"+meta["ims"][e]);
+	    new_img.setAttribute("src", src);
 	    jQuery(new_img).on("load", function () {
 		// TODO: Review
 		that.real_img_size = [this.width, this.height];
@@ -923,13 +969,21 @@ function WiseSwapper () {
     };
 
 
-    this.get_cutouts = function (ra,dec,size,band) {
+    this.get_cutouts = function (ra,dec,size,band,sizeas) {
 	var bound_band = band;
-
-	jQuery.ajax({
-	    url: "https://vjxontvb73.execute-api.us-west-2.amazonaws.com/png-animation",
-	    datatype: "jsonp",
-	    data: {ra: ra, dec: dec, band: band, size: size,
+	var spherex = (this.instrument === "spherex");
+	var url = spherex
+	    ? (WV.spherexFramesUrl || "/api/spherex/frames")
+	    : (WV.unwiseAnimationUrl || "https://vjxontvb73.execute-api.us-west-2.amazonaws.com/png-animation");
+	var data = spherex ? {
+	    ra: ra,
+	    dec: dec,
+	    size: sizeas || size,
+	    detector: this.detector_input.val() || "D2",
+	    wavelength: this.wavelength_input.val() || "",
+	    stretch: this.linear_input.slider("option","value"),
+	    invert: this.invert_input.prop("checked") ? 1 : 0
+	} : {ra: ra, dec: dec, band: band, size: size,
 		   max_dyr: this.maxdyr_input.prop("checked") ? 1 : 0,
 		   minbright: symexp10(this.trimbright.low()).toFixed(4),
 		   maxbright: symexp10(this.trimbright.high()).toFixed(4),
@@ -964,7 +1018,12 @@ function WiseSwapper () {
 		   synth_b_pmra: this.synth_b_pmra_input.val(),
 		   synth_b_pmdec: this.synth_b_pmdec_input.val(),
 		   synth_b_mjd: this.synth_b_mjd_input.val(),
-	    },
+	};
+
+	jQuery.ajax({
+	    url: url,
+	    dataType: spherex ? "json" : "jsonp",
+	    data: data,
 	    success: function (meta) {
 		that.__get_cutouts(meta);
 		var mjd_bot = Math.min(...meta["all_mjds"]),
@@ -985,6 +1044,7 @@ function WiseSwapper () {
 		that.CRVAL2 = meta["CRVAL2"];
 		that.NAXIS1 = meta["NAXIS1"];
 		that.NAXIS2 = meta["NAXIS2"];
+		that.PIXSCALE = Number(meta["pixscale"]) || (spherex ? 6.2 : 2.75);
 
 		// make catalog overlays
 		that.overlays_enable["gaiadr2"] = false;
@@ -997,14 +1057,32 @@ function WiseSwapper () {
 		that.updateMjds();
 		that.updateEpochs();
 		that.updateZoom();
+		jQuery("#verValue").text(spherex
+		    ? ("SPHEREx "+meta.detector+" · "+
+		       (meta.wavelength_um ? Number(meta.wavelength_um).toFixed(2)+" µm" : "full band")+
+		       " · "+meta.n_visits+" visits")
+		    : "unWISE");
+		if (spherex && meta.wavelength_note) {
+		    jQuery("#verValue").attr("title", meta.wavelength_note);
+		    console.warn("WiseView:", meta.wavelength_note);
+		} else {
+		    jQuery("#verValue").removeAttr("title");
+		}
 		that.unblock();
 	    },
 	    retries: 6,
 	    error: function(xhr, textStatus, errorThrown) {
-		if (xhr.status != 504 || this.retries-- <= 0) {
+		if (xhr.status == 504 && this.retries-- > 0) {
+		    jQuery.ajax(this);
 		    return;
 		}
-		jQuery.ajax(this);
+		that.unblock();
+		var msg = "Request failed ("+xhr.status+")";
+		try {
+		    msg = JSON.parse(xhr.responseText).error || msg;
+		} catch (e) {}
+		jQuery("#verValue").text("Error: "+msg);
+		console.error("WiseView data request failed:", msg);
 	    }});
     };
 
@@ -1056,9 +1134,17 @@ function WiseSwapper () {
 
 
     this.query_gaia = function (ra,dec,size) {
-	var size_deg = (size/3600.)*2.75,
-	    path = "https://n7z4i9pzx8.execute-api.us-west-2.amazonaws.com/prod/catalog/gaiadr2", //"https://gea.esac.esa.int/tap-server/tap/sync",
-	    params = {
+	var size_deg = this.instrument === "spherex"
+		? (Number(this.size_input.val())/3600.0)
+		: (size/3600.)*2.75,
+	    path = this.instrument === "spherex"
+		? (WV.spherexGaiaUrl || "/api/gaia/cone")
+		: (WV.unwiseGaiaUrl || "https://n7z4i9pzx8.execute-api.us-west-2.amazonaws.com/prod/catalog/gaiadr2"),
+	    params = this.instrument === "spherex" ? {
+		ra: ra,
+		dec: dec,
+		radius_deg: size_deg
+	    } : {
 		request: "doQuery",
 		lang: "adql",
 		format: "json",
@@ -1072,7 +1158,7 @@ function WiseSwapper () {
 	    // Required ra, dec, plx, pmra, pmdec
 	    var rows = data["data"],
 		frames = [],
-		base_mjd = 57204, // 2015.5
+		base_mjd = 57388, // Gaia DR3 reference epoch J2016.0
 		window_mjds = that.window_mjds,
 		// hidden canvas to build overlay
 		tmp_canvas = jQuery("<canvas/>",{"style":"display: none"}).prop({"width":that.real_img_size[0]*that.overlay_scale,"height":that.real_img_size[1]*that.overlay_scale})[0],
@@ -1110,12 +1196,12 @@ function WiseSwapper () {
 			pmdec = shifting ? pmdec-shift_pmdec : pmdec,
 			// correct for pm
 			base_px = px, base_py = py,
-			px = base_px + (((base_mjd - mjd)/365.25)*((pmra/1000)/2.75)),
-			py = base_py + (((base_mjd - mjd)/365.25)*((pmdec/1000)/2.75)),
-			first_px = base_px + (((base_mjd - first_mjd)/365.25)*((pmra/1000)/2.75)),
-			first_py = base_py + (((base_mjd - first_mjd)/365.25)*((pmdec/1000)/2.75)),
-			last_px = base_px + (((base_mjd - last_mjd)/365.25)*((pmra/1000)/2.75)),
-			last_py = base_py + (((base_mjd - last_mjd)/365.25)*((pmdec/1000)/2.75)),
+			px = base_px + (((base_mjd - mjd)/365.25)*((pmra/1000)/that.PIXSCALE)),
+			py = base_py + (((base_mjd - mjd)/365.25)*((pmdec/1000)/that.PIXSCALE)),
+			first_px = base_px + (((base_mjd - first_mjd)/365.25)*((pmra/1000)/that.PIXSCALE)),
+			first_py = base_py + (((base_mjd - first_mjd)/365.25)*((pmdec/1000)/that.PIXSCALE)),
+			last_px = base_px + (((base_mjd - last_mjd)/365.25)*((pmra/1000)/that.PIXSCALE)),
+			last_py = base_py + (((base_mjd - last_mjd)/365.25)*((pmdec/1000)/that.PIXSCALE)),
 			plx = row[2] == "null" ? 0 : Number(row[2]);
 
 		    // Circle for current position and plx
@@ -1186,10 +1272,14 @@ function WiseSwapper () {
 	    size = (~~(sizeas/2.75)); // Convert arcseconds to pixels
 	var band = that.band_input.val();
 
+	// The instrument selector is authoritative on every restart.
+	this.instrument = this.instrument_input.val() || (WV.defaultInstrument || "unwise");
+	this.updateInstrumentUI();
+
 	// Disable/enable pertinent sliders
 	this.trimbright.enable();
 
-	this.get_cutouts(ra,dec,size,band);
+	this.get_cutouts(ra,dec,size,band,sizeas);
 
 	if (this.diff_input.prop("checked")) {
 	    jQuery("#diffWindowRow").show();
