@@ -9,7 +9,8 @@ import {
   Eye, 
   Compass,
   Layers,
-  Sparkles
+  Sparkles,
+  Contrast
 } from 'lucide-react';
 import { DetectedCandidate } from '../types';
 
@@ -27,9 +28,14 @@ interface AstronomicalCanvasProps {
   motionTracks?: { x: number; y: number; epoch: string }[];
   crosshairLabel?: string;
   className?: string;
+  brightness?: number;
+  contrast?: number;
+  invert?: boolean;
+  colormap?: string;
   onToggleGrid?: () => void;
   onToggleReticle?: () => void;
   onToggleCandidates?: () => void;
+  onToggleInvert?: () => void;
 }
 
 export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
@@ -46,9 +52,14 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
   motionTracks,
   crosshairLabel,
   className = '',
+  brightness = 100,
+  contrast = 100,
+  invert = false,
+  colormap = 'grayscale',
   onToggleGrid,
   onToggleReticle,
   onToggleCandidates,
+  onToggleInvert,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -129,7 +140,32 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
     const imgSize = 512; // base reference dimension
     if (img && img.complete) {
       ctx.imageSmoothingEnabled = zoom < 2.0; // crisp pixels when zoomed in
+
+      // Apply WiseView real-time contrast, brightness, invert and colormap filters
+      const filterParts: string[] = [];
+      if (brightness !== undefined && brightness !== 100) {
+        filterParts.push(`brightness(${brightness}%)`);
+      }
+      if (contrast !== undefined && contrast !== 100) {
+        filterParts.push(`contrast(${contrast}%)`);
+      }
+      if (invert) {
+        filterParts.push('invert(100%)');
+      }
+      if (colormap === 'cool') {
+        filterParts.push('hue-rotate(180deg) saturate(140%)');
+      } else if (colormap === 'heat') {
+        filterParts.push('sepia(100%) saturate(300%) hue-rotate(330deg)');
+      } else if (colormap === 'grayscale') {
+        filterParts.push('grayscale(100%)');
+      }
+
+      if (filterParts.length > 0) {
+        ctx.filter = filterParts.join(' ');
+      }
+
       ctx.drawImage(img, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+      ctx.filter = 'none'; // reset filter so vector reticles, grid and HUD stay crisp
     } else {
       // Placeholder dark grid
       ctx.strokeStyle = '#15202B';
@@ -310,7 +346,11 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
     centerRa, 
     centerDec, 
     fovArcmin, 
-    pixelToWorld
+    pixelToWorld,
+    brightness,
+    contrast,
+    invert,
+    colormap
   ]);
 
   // Update canvas size on resize
@@ -538,6 +578,15 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
             className={`p-1.5 rounded transition-colors ${showCandidateMarkers ? 'text-primary bg-surface-elevated' : 'hover:text-text-main'}`}
           >
             <Sparkles className="w-4 h-4" />
+          </button>
+        )}
+        {onToggleInvert && (
+          <button
+            onClick={onToggleInvert}
+            title={invert ? "Standard Black Sky" : "Invert Colormap (WiseView Negative)"}
+            className={`p-1.5 rounded transition-colors ${invert ? 'text-scientific-cyan bg-surface-elevated font-bold shadow' : 'hover:text-text-main'}`}
+          >
+            <Contrast className="w-4 h-4" />
           </button>
         )}
         <div className="w-[1px] h-4 bg-surface-border mx-0.5" />

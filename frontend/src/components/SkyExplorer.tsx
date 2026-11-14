@@ -61,6 +61,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showReticle, setShowReticle] = useState<boolean>(true);
   const [showCandidates, setShowCandidates] = useState<boolean>(true);
+  const [invert, setInvert] = useState<boolean>(false);
 
   // Data states
   const [observationsData, setObservationsData] = useState<ObservationsResponse | null>(null);
@@ -449,10 +450,12 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
               showGrid={showGrid}
               showReticle={showReticle}
               showCandidateMarkers={showCandidates}
+              invert={invert}
               crosshairLabel={`${currentEpoch.epoch_id} · Ch ${metadata?.channel} (${metadata?.wavelength_um.toFixed(2)}µm)`}
               onToggleGrid={() => setShowGrid(!showGrid)}
               onToggleReticle={() => setShowReticle(!showReticle)}
               onToggleCandidates={() => setShowCandidates(!showCandidates)}
+              onToggleInvert={() => setInvert(!invert)}
               className="flex-1"
             />
           ) : (
