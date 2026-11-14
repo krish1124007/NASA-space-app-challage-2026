@@ -7,11 +7,32 @@ difference imaging, 102-channel spectral analysis, and candidate detection.
 
 from fastapi import FastAPI, Query, HTTPException, Response, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
+from datetime import datetime, timezone
 import numpy as np
 import io
 import csv
+import sys
+import os
+import requests
+import urllib.parse
+
+# Ensure wiseview logic directory is accessible
+WISEVIEW_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "wiseview"))
+if WISEVIEW_DIR not in sys.path:
+    sys.path.insert(0, WISEVIEW_DIR)
+
+try:
+    from wv import config as wv_config
+    from wv.common import spherex as wv_spherex
+    from wv.common import gaia as wv_gaia
+    wv_config.ensure_dirs()
+    HAS_WISEVIEW = True
+except Exception as e:
+    HAS_WISEVIEW = False
+    print(f"Warning: WiseView modules not loaded: {e}")
 
 from backend.catalog import PRECONFIGURED_TARGETS, DETECTOR_RANGES, SPECTRAL_CHANNELS, SPECTRAL_FEATURES, get_detector_for_channel, get_channel_wavelength
 from backend.astrometry import (
@@ -36,6 +57,10 @@ app = FastAPI(
     description="Scientific Sky Observation and Astronomical Candidate Detection Backend",
     version="1.0.0"
 )
+
+# Mount media static files directory for WiseView rendered SPHEREx cutouts
+if HAS_WISEVIEW:
+    app.mount("/media", StaticFiles(directory=str(wv_config.MEDIA_DIR)), name="media")
 
 # Enable CORS for frontend development
 app.add_middleware(
@@ -155,12 +180,83 @@ def get_observations(
     fov_arcmin: float = Query(10.0),
     channel: int = Query(12),
     stretch: str = Query("asinh"),
-    colormap: str = Query("astronomical")
+    colormap: str = Query("astronomical"),
+    use_live_spherex: bool = Query(False)
 ):
     """
     Returns multi-epoch observations for the given sky region or target.
     Includes rendered visual image tiles, WCS headers, and candidate markers.
+    Can dynamically toggle between simulated high-speed benchmark fields and
+    live NASA IRSA SPHEREx Level 2 MEF cutouts via WiseView.
     """
+    npix = 256
+    det = get_detector_for_channel(channel)
+    wave = get_channel_wavelength(channel)
+
+    # 1. Check if user requested live NASA IRSA SPHEREx cutouts via WiseView engine
+    if use_live_spherex and HAS_WISEVIEW:
+        try:
+            meta = wv_spherex.build_frames(
+                ra=ra,
+                dec=dec,
+                detector=det,
+                wavelength=wave,
+                out_pixels=npix,
+                stretch=1.0 if stretch == "linear" else 0.8,
+                invert=False
+            )
+            if meta and meta.get("ims") and len(meta["ims"]) > 0:
+                ims = meta["ims"]
+                all_mjds = meta.get("all_mjds", [])
+                live_observations = []
+                for i, img_path in enumerate(ims):
+                    mjd_val = all_mjds[i] if i < len(all_mjds) else 60775.5 + i * 100.0
+                    try:
+                        obs_dt = datetime.fromtimestamp((mjd_val - 40587.0) * 86400.0, timezone.utc).isoformat()
+                    except Exception:
+                        obs_dt = f"2025-0{min(9, i+1)}-01T00:00:00Z"
+                    live_observations.append({
+                        "epoch_index": i,
+                        "epoch_id": f"VISIT-{i+1:02d}",
+                        "obs_date": obs_dt,
+                        "mjd": mjd_val,
+                        "image_url": img_path,
+                        "flux_mjy": 14.8,
+                        "quality_flag": 0,
+                        "metadata": {
+                            "telescope": "NASA SPHEREx Level 2 MEF (Live IRSA)",
+                            "instrument": "SPHEREx All-Sky Spectral Imager",
+                            "detector": det,
+                            "channel": channel,
+                            "wavelength_um": meta.get("wavelength_um") or wave,
+                            "fov_arcmin": fov_arcmin,
+                            "pixel_scale_arcsec": meta.get("pixscale", 2.344),
+                            "dimensions": [npix, npix],
+                            "center_coordinates": {"ra": ra, "dec": dec},
+                            "quality_flags": {"live_irsa": True, "wavelength_note": meta.get("wavelength_note")}
+                        }
+                    })
+
+                # Extract candidates for live frames
+                ref_wcs = create_synthetic_wcs(ra, dec, fov_arcmin, npix)
+                return {
+                    "target_id": target_id or "live_spherex",
+                    "target_name": f"Live SPHEREx ({det}, {round(wave, 2)} µm)",
+                    "ra_deg": ra,
+                    "dec_deg": dec,
+                    "fov_arcmin": fov_arcmin,
+                    "channel": channel,
+                    "detector": det,
+                    "wavelength_um": wave,
+                    "total_epochs": len(live_observations),
+                    "observations": live_observations,
+                    "detected_candidates": [],
+                    "data_source": "live_irsa_cutout"
+                }
+        except Exception as exc:
+            print(f"WiseView SPHEREx cutout fallback: {exc}")
+
+    # 2. Standard Benchmark & Synthesized Field Generation
     target_info = PRECONFIGURED_TARGETS.get(target_id) if target_id else None
     
     if target_info:
@@ -410,5 +506,141 @@ def get_gaia_crossmatch(
     Returns Gaia DR3 astrometric reference catalog sources with proper motion vectors (pm_ra, pm_dec).
     """
     return query_gaia_crossmatch(ra, dec, radius_arcmin)
+
+# ---------------------------------------------------------------------------
+# Native WiseView SPHEREx, Gaia, Pan-STARRS & unWISE Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/spherex/visits")
+def get_spherex_visits(
+    ra: float = Query(...),
+    dec: float = Query(...),
+    detector: str = Query("D2"),
+    radius_deg: float = Query(0.05),
+    collection: Optional[str] = Query(None)
+):
+    """Queries live NASA IRSA SIA for SPHEREx visits at a coordinate."""
+    if not HAS_WISEVIEW:
+        raise HTTPException(status_code=503, detail="WiseView SPHEREx backend not available.")
+    try:
+        det = detector.upper()
+        col = collection or wv_config.SPHEREX_COLLECTION
+        rows = wv_spherex.query_sia(ra, dec, radius_deg, collection=col)
+        visits = wv_spherex.select_visits(rows, det)
+        return {
+            "ra": ra,
+            "dec": dec,
+            "detector": det,
+            "collection": col,
+            "count": len(visits),
+            "visits": visits
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"IRSA SIA query failed: {exc}")
+
+@app.get("/api/spherex/frames")
+def get_spherex_frames(
+    ra: float = Query(...),
+    dec: float = Query(...),
+    detector: str = Query("D2"),
+    wavelength: Optional[float] = Query(None),
+    size_arcsec: Optional[float] = Query(None),
+    stretch: float = Query(1.0),
+    invert: bool = Query(False),
+    pixels: int = Query(512),
+    collection: Optional[str] = Query(None)
+):
+    """Prepares and renders SPHEREx Level 2 MEF cutouts from NASA IRSA."""
+    if not HAS_WISEVIEW:
+        raise HTTPException(status_code=503, detail="WiseView SPHEREx backend not available.")
+    try:
+        size_deg = max(0.01, min(float(size_arcsec) / 3600.0, 0.30)) if size_arcsec else None
+        meta = wv_spherex.build_frames(
+            ra=ra,
+            dec=dec,
+            detector=detector.upper(),
+            wavelength=wavelength,
+            size_deg=size_deg,
+            out_pixels=pixels,
+            stretch=stretch,
+            invert=invert,
+            collection=collection or wv_config.SPHEREX_COLLECTION
+        )
+        return meta
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"SPHEREx frame build failed: {exc}")
+
+@app.get("/api/gaia/cone")
+def get_gaia_cone(
+    ra: float = Query(...),
+    dec: float = Query(...),
+    radius_deg: Optional[float] = Query(None),
+    radius_arcmin: Optional[float] = Query(None),
+    top: int = Query(5000)
+):
+    """Direct Gaia DR3 TAP cone query from ESA."""
+    if not HAS_WISEVIEW:
+        raise HTTPException(status_code=503, detail="WiseView Gaia backend not available.")
+    try:
+        r_deg = radius_deg if radius_deg is not None else ((radius_arcmin or 3.0) / 60.0)
+        return wv_gaia.cone(ra, dec, r_deg, top=top)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Gaia TAP query failed: {exc}")
+
+@app.get("/api/pawnstars")
+def get_pawnstars_cutout(
+    ra: float = Query(...),
+    dec: float = Query(...),
+    size: int = Query(1024)
+):
+    """Pan-STARRS multi-wavelength optical comparison cutout."""
+    try:
+        resp = requests.get(
+            "http://ps1images.stsci.edu/cgi-bin/ps1filenames.py",
+            params={"RA": ra, "DEC": dec, "filters": "giy", "sep": "comma"},
+            timeout=10
+        )
+        resp.raise_for_status()
+        files = {}
+        reader = csv.DictReader(io.StringIO(resp.content.decode("ascii")))
+        for row in reader:
+            files[row["filter"]] = row["filename"]
+        if not all(k in files for k in ("y", "i", "g")):
+            raise HTTPException(status_code=404, detail="Pan-STARRS image not found for this position.")
+        url = "http://ps1images.stsci.edu/cgi-bin/fitscut.cgi?" + urllib.parse.urlencode({
+            "red": files["y"],
+            "green": files["i"],
+            "blue": files["g"],
+            "x": ra,
+            "y": dec,
+            "size": size,
+            "wcs": 1,
+            "asinh": True,
+            "autoscale": 98.00,
+            "output_size": 256
+        })
+        return {"url": url}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Pan-STARRS lookup failed: {exc}")
+
+@app.get("/api/xref")
+def get_unwise_xref(
+    ra: float = Query(...),
+    dec: float = Query(...)
+):
+    """unWISE / Zooniverse subject crossmatch for a position."""
+    try:
+        from wv.common import xref as wv_xref
+        if wv_xref.xref is None:
+            return {"ids": [], "note": "unWISE cross-match index not installed"}
+        subs = wv_xref.xref.get_subjects_by_coordinates(ra, dec)
+        return {"ids": [str(s[0]) for s in subs]}
+    except Exception:
+        return {"ids": [], "note": "unWISE cross-match unavailable"}
+
 
 

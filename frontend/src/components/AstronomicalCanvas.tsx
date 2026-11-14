@@ -32,10 +32,13 @@ interface AstronomicalCanvasProps {
   contrast?: number;
   invert?: boolean;
   colormap?: string;
+  gaiaSources?: Array<{ ra: number; dec: number; pmra?: number | null; pmdec?: number | null; g_mag?: number | null }>;
+  showGaia?: boolean;
   onToggleGrid?: () => void;
   onToggleReticle?: () => void;
   onToggleCandidates?: () => void;
   onToggleInvert?: () => void;
+  onToggleGaia?: () => void;
 }
 
 export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
@@ -56,10 +59,13 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
   contrast = 100,
   invert = false,
   colormap = 'grayscale',
+  gaiaSources = [],
+  showGaia = false,
   onToggleGrid,
   onToggleReticle,
   onToggleCandidates,
   onToggleInvert,
+  onToggleGaia,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -280,6 +286,44 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
       ctx.restore();
     }
 
+    // Draw Gaia DR3 Reference Star Overlays (WiseView Engine)
+    if (showGaia && gaiaSources && gaiaSources.length > 0) {
+      ctx.save();
+      const scaleDeg = (fovArcmin / 60.0) / imgSize;
+      const cosDec = Math.cos((centerDec * Math.PI) / 180.0);
+
+      gaiaSources.forEach((src) => {
+        const dx = - (src.ra - centerRa) * cosDec / Math.max(1e-4, scaleDeg);
+        const dy = - (src.dec - centerDec) / scaleDeg;
+
+        if (Math.abs(dx) <= imgSize / 2 + 20 && Math.abs(dy) <= imgSize / 2 + 20) {
+          const r = 3.5 / zoom;
+          ctx.strokeStyle = '#78B99A'; // scientific green
+          ctx.lineWidth = 1.2 / zoom;
+          // Diamond shape
+          ctx.beginPath();
+          ctx.moveTo(dx, dy - r);
+          ctx.lineTo(dx + r, dy);
+          ctx.lineTo(dx, dy + r);
+          ctx.lineTo(dx - r, dy);
+          ctx.closePath();
+          ctx.stroke();
+
+          // Draw proper motion vector if present (in mas/yr)
+          if (src.pmra || src.pmdec) {
+            const pmScale = 0.5 / zoom;
+            const pmx = dx - (src.pmra || 0) * pmScale;
+            const pmy = dy - (src.pmdec || 0) * pmScale;
+            ctx.beginPath();
+            ctx.moveTo(dx, dy);
+            ctx.lineTo(pmx, pmy);
+            ctx.stroke();
+          }
+        }
+      });
+      ctx.restore();
+    }
+
     // Center Coordinate Reticle (Fixed Instrument Bore Sight)
     if (showReticle) {
       ctx.save();
@@ -350,7 +394,9 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
     brightness,
     contrast,
     invert,
-    colormap
+    colormap,
+    gaiaSources,
+    showGaia
   ]);
 
   // Update canvas size on resize
@@ -578,6 +624,15 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
             className={`p-1.5 rounded transition-colors ${showCandidateMarkers ? 'text-primary bg-surface-elevated' : 'hover:text-text-main'}`}
           >
             <Sparkles className="w-4 h-4" />
+          </button>
+        )}
+        {onToggleGaia && (
+          <button
+            onClick={onToggleGaia}
+            title={showGaia ? "Hide Gaia DR3 Catalog Stars" : "Show Gaia DR3 Catalog Stars (WiseView TAP)"}
+            className={`p-1.5 rounded transition-colors ${showGaia ? 'text-scientific-success bg-surface-elevated font-bold shadow' : 'hover:text-text-main'}`}
+          >
+            <Layers className="w-4 h-4" />
           </button>
         )}
         {onToggleInvert && (

@@ -126,10 +126,44 @@ def parse_uploaded_fits(file_bytes: bytes, filename: str = "uploaded.fits") -> D
 
 def query_gaia_crossmatch(ra: float, dec: float, radius_arcmin: float = 6.0) -> List[Dict[str, Any]]:
     """
-    Simulates or returns Gaia DR3 astrometric reference stars with high-precision
-    proper motion vectors (pmra, pmdec) for the active field of view.
+    Returns real Gaia DR3 astrometric reference stars with high-precision
+    proper motion vectors (pmra, pmdec) and parallaxes via the WiseView TAP query engine.
+    Gracefully falls back to deterministic simulation if the TAP service is unavailable.
     """
-    # Deterministic generation based on sky coordinates
+    # 1. Try real Gaia DR3 TAP query using WiseView engine
+    try:
+        import sys, os
+        wv_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "wiseview"))
+        if wv_dir not in sys.path:
+            sys.path.insert(0, wv_dir)
+        from wv.common import gaia as wv_gaia
+        gaia_res = wv_gaia.cone(ra, dec, radius_arcmin / 60.0)
+        sources = gaia_res.get("sources", [])
+        if sources:
+            stars = []
+            for s in sources[:60]:
+                pmra = s.get("pmra") or 0.0
+                pmdec = s.get("pmdec") or 0.0
+                plx = s.get("parallax") or 1.0
+                g_mag = s.get("phot_g_mean_mag") or 15.0
+                stars.append({
+                    "source_id": f"Gaia-DR3-{s.get('source_id', 'SRC')}",
+                    "ra_deg": round(float(s["ra"]), 5),
+                    "dec_deg": round(float(s["dec"]), 5),
+                    "g_mag": round(float(g_mag), 2),
+                    "pm_ra_mas_yr": round(float(pmra), 2),
+                    "pm_dec_mas_yr": round(float(pmdec), 2),
+                    "total_pm_mas_yr": round(float(np.sqrt(pmra**2 + pmdec**2)), 2),
+                    "parallax_mas": round(float(plx), 2),
+                    "dist_pc": round(1000.0 / max(0.1, abs(plx)), 1),
+                    "is_live_gaia": True
+                })
+            return stars
+    except Exception:
+        # Fall back to deterministic model if ESA TAP is offline or slow
+        pass
+
+    # 2. Deterministic generation based on sky coordinates fallback
     seed = int(abs(ra * 1000 + dec * 100)) % (2**31 - 1)
     rng = np.random.RandomState(seed)
 

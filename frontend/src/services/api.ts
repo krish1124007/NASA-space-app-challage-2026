@@ -134,6 +134,99 @@ export const ApiService = {
 
   getExportUrl(): string {
     return `${API_BASE}/discoveries/export`;
+  },
+
+  // -------------------------------------------------------------------------
+  // WiseView Engine Integration: SPHEREx IRSA, Gaia TAP, Pan-STARRS & unWISE
+  // -------------------------------------------------------------------------
+
+  async getSpherexVisits(ra: number, dec: number, detector: string = 'D2', radiusDeg: number = 0.05): Promise<{
+    ra: number;
+    dec: number;
+    detector: string;
+    collection: string;
+    count: number;
+    visits: any[];
+  }> {
+    const res = await fetch(`${API_BASE}/spherex/visits?ra=${ra}&dec=${dec}&detector=${detector}&radius_deg=${radiusDeg}`);
+    if (!res.ok) throw new Error('Failed to fetch SPHEREx visits from NASA IRSA');
+    return res.json();
+  },
+
+  async getSpherexLiveFrames(params: {
+    ra: number;
+    dec: number;
+    detector?: string;
+    wavelength?: number;
+    sizeArcsec?: number;
+    stretch?: number;
+    invert?: boolean;
+    pixels?: number;
+  }): Promise<{
+    instrument: string;
+    dataset: string;
+    field_id: string;
+    detector: string;
+    wavelength_um: number | null;
+    ims: string[];
+    all_mjds: number[];
+    mjds: number[][];
+    epochs: number[][];
+    min: number;
+    max: number;
+    CRPIX1: number;
+    CRPIX2: number;
+    CRVAL1: number;
+    CRVAL2: number;
+    pixscale: number;
+    n_visits: number;
+    wavelength_note?: string;
+  }> {
+    const query = new URLSearchParams();
+    query.append('ra', params.ra.toString());
+    query.append('dec', params.dec.toString());
+    if (params.detector) query.append('detector', params.detector);
+    if (params.wavelength) query.append('wavelength', params.wavelength.toString());
+    if (params.sizeArcsec) query.append('size_arcsec', params.sizeArcsec.toString());
+    if (params.stretch !== undefined) query.append('stretch', params.stretch.toString());
+    if (params.invert !== undefined) query.append('invert', params.invert ? '1' : '0');
+    if (params.pixels) query.append('pixels', params.pixels.toString());
+
+    const res = await fetch(`${API_BASE}/spherex/frames?${query.toString()}`);
+    if (!res.ok) throw new Error('Failed to render live SPHEREx frames from NASA IRSA');
+    return res.json();
+  },
+
+  async getGaiaCone(ra: number, dec: number, radiusDeg: number = 0.05): Promise<{
+    ra: number;
+    dec: number;
+    radius_deg: number;
+    count: number;
+    sources: Array<{
+      source_id: string | number;
+      ra: number;
+      dec: number;
+      parallax: number | null;
+      pmra: number | null;
+      pmdec: number | null;
+      phot_g_mean_mag: number | null;
+    }>;
+  }> {
+    const res = await fetch(`${API_BASE}/gaia/cone?ra=${ra}&dec=${dec}&radius_deg=${radiusDeg}`);
+    if (!res.ok) throw new Error('Failed to query Gaia DR3 catalog');
+    return res.json();
+  },
+
+  async getGaiaCrossmatch(ra: number, dec: number, radiusArcmin: number = 6.0): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/crossmatch/gaia?ra=${ra}&dec=${dec}&radius_arcmin=${radiusArcmin}`);
+    if (!res.ok) throw new Error('Failed to fetch Gaia crossmatch');
+    return res.json();
+  },
+
+  async getPawnstars(ra: number, dec: number, size: number = 1024): Promise<{ url: string }> {
+    const res = await fetch(`${API_BASE}/pawnstars?ra=${ra}&dec=${dec}&size=${size}`);
+    if (!res.ok) throw new Error('Failed to query Pan-STARRS optical cutout');
+    return res.json();
   }
 };
 

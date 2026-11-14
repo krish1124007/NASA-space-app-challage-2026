@@ -31,7 +31,10 @@ import {
   Compass,
   Eye,
   RefreshCw,
-  Repeat
+  Repeat,
+  Globe,
+  Radio,
+  ExternalLink
 } from 'lucide-react';
 
 interface TimeMachineProps {
@@ -75,6 +78,14 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
   const [showReticle, setShowReticle] = useState<boolean>(true);
   const [showCandidates, setShowCandidates] = useState<boolean>(true);
   const [showMotionTrail, setShowMotionTrail] = useState<boolean>(true);
+  const [showGaia, setShowGaia] = useState<boolean>(false);
+  const [gaiaSources, setGaiaSources] = useState<any[]>([]);
+
+  // Multi-mission Pan-STARRS & Live IRSA stream state
+  const [useLiveSpherex, setUseLiveSpherex] = useState<boolean>(false);
+  const [showPawnstars, setShowPawnstars] = useState<boolean>(false);
+  const [pawnstarsUrl, setPawnstarsUrl] = useState<string | null>(null);
+  const [loadingPawnstars, setLoadingPawnstars] = useState<boolean>(false);
 
   // Observations & difference data
   const [observationsData, setObservationsData] = useState<ObservationsResponse | null>(null);
@@ -91,25 +102,55 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
     loadData(currentTargetId);
   }, [currentTargetId]);
 
-  const loadData = async (targetId: string) => {
+  const loadGaia = async (ra: number, dec: number) => {
+    try {
+      const res = await ApiService.getGaiaCrossmatch(ra, dec, 6.0);
+      setGaiaSources(res || []);
+    } catch {
+      setGaiaSources([]);
+    }
+  };
+
+  const loadPawnstars = async (ra: number, dec: number) => {
+    setLoadingPawnstars(true);
+    try {
+      const res = await ApiService.getPawnstars(ra, dec, 1024);
+      setPawnstarsUrl(res.url);
+    } catch {
+      setPawnstarsUrl(null);
+    } finally {
+      setLoadingPawnstars(false);
+    }
+  };
+
+  const loadData = async (targetId: string, live?: boolean) => {
     setLoading(true);
     try {
+      const isLive = live !== undefined ? live : useLiveSpherex;
+      const target = targets.find(t => t.id === targetId);
+      const ra = target ? target.coordinates.ra_deg : activeCoords.ra;
+      const dec = target ? target.coordinates.dec_deg : activeCoords.dec;
+
       const res = await ApiService.getObservations({
         target_id: targetId,
         channel: 12,
         fov_arcmin: 10.0,
+        ...(isLive ? { use_live_spherex: true } as any : {})
       });
       setObservationsData(res);
       setCurrentEpochIdx(0);
       setBlinkEpochA(0);
-      setBlinkEpochB(res.observations.length - 1);
+      setBlinkEpochB(Math.max(0, res.observations.length - 1));
       setSideEpochLeft(0);
-      setSideEpochRight(res.observations.length - 1);
+      setSideEpochRight(Math.max(0, res.observations.length - 1));
       if (res.detected_candidates.length > 0) {
         setSelectedCandidate(res.detected_candidates[0]);
       }
-      // Load difference image between epoch 0 and last epoch
-      loadDifference(targetId, 0, res.observations.length - 1);
+      loadDifference(targetId, 0, Math.max(0, res.observations.length - 1));
+      loadGaia(ra, dec);
+      if (showPawnstars) {
+        loadPawnstars(ra, dec);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -330,6 +371,47 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
 
         {/* RIGHT: Quick Visual & Playback Actions */}
         <div className="flex items-center space-x-2">
+          {/* Live NASA IRSA SPHEREx Cutouts Toggle (WiseView Engine) */}
+          <button
+            onClick={() => {
+              const next = !useLiveSpherex;
+              setUseLiveSpherex(next);
+              loadData(currentTargetId, next);
+            }}
+            title={useLiveSpherex ? "Switch back to SPHEREx benchmark fields" : "Stream live Level 2 SPHEREx cutouts from NASA IRSA (WiseView Engine)"}
+            className={`flex items-center space-x-1.5 h-7 px-2.5 rounded text-xs font-mono border transition-all ${
+              useLiveSpherex
+                ? 'bg-scientific-cyan/25 border-scientific-cyan text-scientific-cyan font-bold shadow-[0_0_10px_rgba(94,234,212,0.4)]'
+                : 'bg-surface-elevated border-surface-border text-secondary hover:text-text-main'
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">{useLiveSpherex ? 'Live IRSA Cutout' : 'Live IRSA'}</span>
+          </button>
+
+          {/* Pan-STARRS Optical Comparison Strip Toggle */}
+          <button
+            onClick={() => {
+              const next = !showPawnstars;
+              setShowPawnstars(next);
+              if (next && !pawnstarsUrl) {
+                const target = targets.find(t => t.id === currentTargetId);
+                const ra = target ? target.coordinates.ra_deg : activeCoords.ra;
+                const dec = target ? target.coordinates.dec_deg : activeCoords.dec;
+                loadPawnstars(ra, dec);
+              }
+            }}
+            title="Toggle Pan-STARRS optical color composite comparison strip (WiseView Pawnstars)"
+            className={`flex items-center space-x-1.5 h-7 px-2.5 rounded text-xs font-mono border transition-all ${
+              showPawnstars
+                ? 'bg-primary/20 border-primary text-primary font-semibold shadow-sm'
+                : 'bg-surface-elevated border-surface-border text-secondary hover:text-text-main'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span className="hidden xl:inline">Pan-STARRS</span>
+          </button>
+
           {/* Real-time Invert Color Toggle (Signature WiseView feature) */}
           <button
             onClick={() => setInvert(!invert)}
@@ -617,6 +699,14 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
             >
               ✦ Candidates
             </button>
+            <button
+              onClick={() => setShowGaia(!showGaia)}
+              className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${
+                showGaia ? 'bg-scientific-success/20 border-scientific-success text-scientific-success font-semibold shadow-xs' : 'bg-surface-elevated border-surface-border text-text-muted'
+              }`}
+            >
+              ✦ Gaia DR3 ({gaiaSources.length})
+            </button>
           </div>
         </div>
       )}
@@ -647,10 +737,13 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
                   showGrid={showGrid}
                   showReticle={showReticle}
                   showCandidateMarkers={showCandidates}
+                  gaiaSources={gaiaSources}
+                  showGaia={showGaia}
                   onToggleGrid={() => setShowGrid(!showGrid)}
                   onToggleReticle={() => setShowReticle(!showReticle)}
                   onToggleCandidates={() => setShowCandidates(!showCandidates)}
                   onToggleInvert={() => setInvert(!invert)}
+                  onToggleGaia={() => setShowGaia(!showGaia)}
                   crosshairLabel={`${mode === 'blink' ? 'Blinking' : 'Playing'}: ${currentEpoch.epoch_id} (${new Date(currentEpoch.obs_date).toISOString().slice(0, 10)})`}
                   className="w-full h-full"
                 />
@@ -727,6 +820,9 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
                     showGrid={showGrid}
                     showReticle={showReticle}
                     showCandidateMarkers={showCandidates}
+                    gaiaSources={gaiaSources}
+                    showGaia={showGaia}
+                    onToggleGaia={() => setShowGaia(!showGaia)}
                     crosshairLabel={`Coadd A: ${epochs[sideEpochLeft].epoch_id}`}
                     className="w-full h-full"
                   />
@@ -762,6 +858,9 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
                     showGrid={showGrid}
                     showReticle={showReticle}
                     showCandidateMarkers={showCandidates}
+                    gaiaSources={gaiaSources}
+                    showGaia={showGaia}
+                    onToggleGaia={() => setShowGaia(!showGaia)}
                     crosshairLabel={`Coadd B: ${epochs[sideEpochRight].epoch_id}`}
                     className="w-full h-full"
                   />
@@ -819,6 +918,43 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
                     <span className="text-scientific-success font-semibold">{differenceData.stats.snr_peak}σ</span>
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* PAN-STARRS OPTICAL COMPARISON STRIP (WISEVIEW INTEGRATION) */}
+          {showPawnstars && (
+            <div className="bg-[#0B1016]/95 border-t border-surface-border px-4 py-2 flex items-center justify-between gap-4 text-xs font-mono flex-shrink-0 animate-fadeIn select-none">
+              <div className="flex items-center space-x-3">
+                <span className="text-[11px] font-bold text-primary uppercase tracking-wider flex items-center space-x-1.5">
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>Pan-STARRS Optical Strip:</span>
+                </span>
+                <span className="text-text-muted text-[10px] hidden md:inline">
+                  Filters: g, i, y (Optical/NIR Composite) · STScI Archive
+                </span>
+              </div>
+              {loadingPawnstars ? (
+                <span className="text-secondary text-[11px] animate-pulse">Retrieving Pan-STARRS composite...</span>
+              ) : pawnstarsUrl ? (
+                <div className="flex items-center space-x-3">
+                  <img 
+                    src={pawnstarsUrl} 
+                    alt="Pan-STARRS Cutout" 
+                    className="h-11 w-11 object-cover rounded border border-surface-border shadow"
+                  />
+                  <a 
+                    href={pawnstarsUrl} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="text-scientific-cyan hover:underline text-[11px] flex items-center space-x-1 font-semibold"
+                  >
+                    <span>Full STScI Cutout</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              ) : (
+                <span className="text-text-muted text-[10px]">Optical composite unavailable for this celestial position.</span>
               )}
             </div>
           )}
