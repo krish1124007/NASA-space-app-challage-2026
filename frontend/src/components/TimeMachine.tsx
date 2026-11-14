@@ -157,16 +157,16 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
       {/* Top Controls Toolbar */}
-      <div className="bg-surface border-b border-surface-border px-4 sm:px-6 h-12 flex items-center justify-between gap-3 text-xs flex-shrink-0">
+      <div className="bg-surface border-b border-surface-border px-4 sm:px-6 h-12 flex items-center justify-between gap-3 text-xs flex-shrink-0 select-none">
         {/* Target Selector */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2.5">
           <span className="text-text-muted font-mono uppercase text-[11px] tracking-wider">
-            Temporal Target:
+            Target:
           </span>
           <select
             value={currentTargetId}
             onChange={(e) => onSelectTarget(e.target.value)}
-            className="px-2.5 py-1 rounded bg-surface-elevated border border-surface-border text-xs text-text-main font-mono focus:border-primary focus:outline-none"
+            className="h-8 px-2.5 rounded bg-surface-elevated border border-surface-border text-xs text-text-main font-mono focus:border-primary focus:outline-none"
           >
             {targets.map((t) => (
               <option key={t.id} value={t.id}>
@@ -177,23 +177,23 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
         </div>
 
         {/* Comparison Modes Segmented Control */}
-        <div className="flex items-center space-x-1 bg-surface-elevated p-1 rounded border border-surface-border font-mono text-xs">
+        <div className="flex items-center space-x-1 bg-surface-card p-1 rounded-md border border-surface-border font-mono text-xs">
           <button
             onClick={() => { setMode('blink'); setIsPlaying(true); }}
-            className={`flex items-center space-x-1 px-3 py-1 rounded transition-colors ${
+            className={`flex items-center space-x-1.5 px-3 h-7 rounded text-xs transition-colors ${
               mode === 'blink'
-                ? 'bg-primary text-[#0B1016] font-semibold'
+                ? 'bg-surface-elevated text-primary border border-surface-border font-semibold shadow-sm'
                 : 'text-text-muted hover:text-text-main'
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>A. Blink Comparison</span>
+            <span>A. Blink Mode</span>
           </button>
           <button
             onClick={() => { setMode('side-by-side'); setIsPlaying(false); }}
-            className={`flex items-center space-x-1 px-3 py-1 rounded transition-colors ${
+            className={`flex items-center space-x-1.5 px-3 h-7 rounded text-xs transition-colors ${
               mode === 'side-by-side'
-                ? 'bg-primary text-[#0B1016] font-semibold'
+                ? 'bg-surface-elevated text-primary border border-surface-border font-semibold shadow-sm'
                 : 'text-text-muted hover:text-text-main'
             }`}
           >
@@ -202,9 +202,9 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
           </button>
           <button
             onClick={() => { setMode('difference'); setIsPlaying(false); }}
-            className={`flex items-center space-x-1 px-3 py-1 rounded transition-colors ${
+            className={`flex items-center space-x-1.5 px-3 h-7 rounded text-xs transition-colors ${
               mode === 'difference'
-                ? 'bg-primary text-[#0B1016] font-semibold'
+                ? 'bg-surface-elevated text-primary border border-surface-border font-semibold shadow-sm'
                 : 'text-text-muted hover:text-text-main'
             }`}
           >
@@ -219,23 +219,23 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
             <>
               <button
                 onClick={() => setIsPlaying(!isPlaying)}
-                className={`flex items-center space-x-1 px-3 py-1 rounded text-xs font-mono font-medium transition-colors ${
+                className={`flex items-center space-x-1.5 h-8 px-3 rounded text-xs font-mono font-semibold transition-colors ${
                   isPlaying
                     ? 'bg-scientific-warning text-[#0B1016]'
-                    : 'bg-primary text-[#0B1016] hover:bg-primary-hover'
+                    : 'bg-primary text-[#0B1016] hover:bg-primary-hover shadow-sm'
                 }`}
               >
                 {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                 <span>{isPlaying ? 'Pause' : 'Play Timeline'}</span>
               </button>
 
-              <div className="flex items-center space-x-1 bg-surface-elevated border border-surface-border px-1.5 py-0.5 rounded text-[11px] font-mono text-secondary">
+              <div className="flex items-center space-x-1 h-8 bg-surface-elevated border border-surface-border px-2 rounded text-[11px] font-mono text-secondary">
                 <span className="text-text-muted">Speed:</span>
                 {[0.5, 1, 2, 4].map((s) => (
                   <button
                     key={s}
                     onClick={() => setPlaybackSpeed(s)}
-                    className={`px-1 rounded ${playbackSpeed === s ? 'text-primary font-bold' : 'hover:text-text-main'}`}
+                    className={`px-1 rounded transition-colors ${playbackSpeed === s ? 'text-primary font-bold bg-surface' : 'hover:text-text-main'}`}
                   >
                     {s}x
                   </button>
@@ -386,7 +386,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
           )}
 
           {/* Bottom Timeline Scrubber */}
-          <div className="bg-surface border-t border-surface-border px-4 py-3 space-y-2">
+          <div className="bg-surface border-t border-surface-border px-4 sm:px-6 py-2.5 space-y-2 flex-shrink-0 select-none">
             <div className="flex items-center justify-between text-xs font-mono">
               <div className="flex items-center space-x-2">
                 <Calendar className="w-3.5 h-3.5 text-text-muted" />

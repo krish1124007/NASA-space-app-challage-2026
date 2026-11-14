@@ -12,8 +12,8 @@ import {
   Share2, 
   Check, 
   Radio,
-  ChevronRight,
-  Upload
+  Upload,
+  ChevronRight
 } from 'lucide-react';
 
 interface TopNavProps {
@@ -59,16 +59,16 @@ export const TopNav: React.FC<TopNavProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0B1016]/95 backdrop-blur-md border-b border-surface-border">
+    <header className="sticky top-0 z-50 bg-[#0B1016]/95 backdrop-blur-md border-b border-surface-border select-none">
       {/* Main Navigation Bar */}
-      <div className="w-full px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+      <div className="w-full px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
         
         {/* LEFT ZONE: Brand & Mission Identity */}
         <div className="flex items-center space-x-3 flex-shrink-0">
           <button 
             onClick={() => onSelectTab('overview')}
             className="flex items-center space-x-2.5 group text-left focus:outline-none"
-            title="SPHEREx Explorer Overview"
+            title="SPHEREx Explorer Home"
           >
             {/* Mission Insignia Reticle */}
             <div className="w-8 h-8 rounded border border-primary/40 bg-surface-elevated flex items-center justify-center text-primary group-hover:border-primary group-hover:bg-primary/10 transition-all shadow-sm">
@@ -99,48 +99,27 @@ export const TopNav: React.FC<TopNavProps> = ({
           </button>
         </div>
 
-        {/* CENTER ZONE: Primary Tab Navigation */}
-        <nav className="hidden xl:flex items-center space-x-1 bg-surface-card/80 p-1 rounded-md border border-surface-border/80 shadow-inner">
+        {/* CENTER ZONE: Primary Tab Navigation (Desktop & Laptop: 768px+) */}
+        <nav className="hidden md:flex items-center space-x-1 bg-surface-card/90 p-1 rounded-md border border-surface-border/80 shadow-inner">
           {navItems.map((item) => {
             const active = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`relative flex items-center space-x-1.5 px-3 h-7.5 rounded text-xs font-medium transition-all ${
+                className={`relative flex items-center space-x-1.5 px-2.5 lg:px-3 h-8 rounded text-xs font-medium transition-all ${
                   active
-                    ? 'bg-surface-elevated text-primary border border-surface-border shadow-sm'
+                    ? 'bg-surface-elevated text-primary border border-surface-border shadow-sm font-semibold'
                     : 'text-text-muted hover:text-text-main hover:bg-surface-elevated/50'
                 }`}
               >
                 <span className={active ? 'text-primary' : 'text-text-muted'}>
                   {item.icon}
                 </span>
-                <span>{item.label}</span>
+                <span className="whitespace-nowrap">{item.label}</span>
                 {active && (
-                  <span className="absolute -bottom-1 left-2 right-2 h-[2px] bg-primary rounded-full shadow-[0_0_8px_rgba(140,183,216,0.6)]" />
+                  <span className="absolute -bottom-1 left-2.5 right-2.5 h-[2px] bg-primary rounded-full shadow-[0_0_8px_rgba(140,183,216,0.6)]" />
                 )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Compact Nav for Tablet/Medium Screens */}
-        <nav className="hidden md:flex xl:hidden items-center space-x-1">
-          {navItems.slice(0, 4).map((item) => {
-            const active = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onSelectTab(item.id)}
-                className={`flex items-center space-x-1 px-2.5 h-8 rounded text-xs font-medium transition-colors ${
-                  active
-                    ? 'bg-surface-elevated text-primary border border-surface-border font-semibold'
-                    : 'text-text-muted hover:text-text-main hover:bg-surface-elevated/50'
-                }`}
-              >
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
               </button>
             );
           })}
@@ -151,15 +130,18 @@ export const TopNav: React.FC<TopNavProps> = ({
           
           {/* Active Target Readout Pill */}
           {activeTargetName && (
-            <div 
+            <button 
               onClick={() => onSelectTab('explorer')}
-              className="hidden lg:flex items-center space-x-1.5 h-8 px-2.5 rounded border border-surface-border bg-surface-card hover:bg-surface-elevated hover:border-primary/40 cursor-pointer transition-colors text-xs font-mono text-secondary"
+              className="hidden lg:flex items-center space-x-1.5 h-8 px-2.5 rounded border border-surface-border bg-surface-card hover:bg-surface-elevated hover:border-primary/40 cursor-pointer transition-colors text-xs font-mono text-secondary text-left group"
               title="Click to view in Sky Explorer"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-scientific-cyan animate-pulse" />
               <span className="text-text-muted text-[11px]">Target:</span>
-              <span className="text-text-main font-semibold max-w-[120px] truncate">{activeTargetName}</span>
-            </div>
+              <span className="text-text-main font-semibold max-w-[110px] truncate group-hover:text-primary transition-colors">
+                {activeTargetName}
+              </span>
+              <ChevronRight className="w-3 h-3 text-text-muted group-hover:text-primary transition-colors" />
+            </button>
           )}
 
           {/* NASA IRSA Data Connection Pill */}
@@ -169,7 +151,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             <span className="text-scientific-success font-semibold tracking-wide">ONLINE</span>
           </div>
 
-          {/* Vertical Separator */}
+          {/* Vertical Divider */}
           <div className="hidden sm:block w-[1px] h-5 bg-surface-border/80" />
 
           {/* Action: Import NASA Data / FITS */}
@@ -223,15 +205,15 @@ export const TopNav: React.FC<TopNavProps> = ({
         </div>
       </div>
 
-      {/* Responsive Secondary Horizontal Nav Bar (for Tablet & Mobile) */}
-      <div className="xl:hidden flex items-center overflow-x-auto px-4 py-1.5 border-t border-surface-border/70 space-x-1.5 bg-surface scrollbar-none">
+      {/* Mobile-Only Horizontal Subnav (< 768px) */}
+      <div className="md:hidden flex items-center overflow-x-auto px-4 py-2 border-t border-surface-border/70 space-x-1.5 bg-surface/90 scrollbar-none">
         {navItems.map((item) => {
           const active = currentTab === item.id;
           return (
             <button
               key={item.id}
               onClick={() => onSelectTab(item.id)}
-              className={`flex items-center space-x-1.5 px-3 h-7 rounded text-xs whitespace-nowrap transition-colors ${
+              className={`flex items-center space-x-1.5 px-3 h-7.5 rounded text-xs whitespace-nowrap transition-colors ${
                 active
                   ? 'bg-surface-elevated text-primary border border-surface-border font-semibold shadow-sm'
                   : 'text-text-muted hover:text-text-main hover:bg-surface-card'

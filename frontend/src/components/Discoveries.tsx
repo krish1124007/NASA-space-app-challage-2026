@@ -86,7 +86,7 @@ export const Discoveries: React.FC<DiscoveriesProps> = ({
           <a
             href={ApiService.getExportUrl()}
             download="spherex_discoveries_export.csv"
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded bg-surface-elevated border border-surface-border hover:border-primary/50 text-xs font-mono text-text-main transition-colors"
+            className="flex items-center space-x-1.5 h-8 px-3 rounded bg-surface-elevated border border-surface-border hover:border-primary/50 text-xs font-mono text-text-main transition-colors shadow-sm"
           >
             <Download className="w-3.5 h-3.5 text-primary" />
             <span>Export Registry (CSV)</span>
@@ -98,25 +98,25 @@ export const Discoveries: React.FC<DiscoveriesProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
         <div className="flex items-center space-x-2 flex-1 max-w-md">
           <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter by designation, candidate ID, or field..."
-              className="w-full pl-9 pr-3 py-1.5 rounded bg-surface-elevated border border-surface-border text-xs text-text-main placeholder-text-muted/60 focus:outline-none focus:border-primary"
+              className="w-full pl-9 pr-3 h-8 rounded bg-surface-elevated border border-surface-border text-xs text-text-main placeholder-text-muted/60 focus:outline-none focus:border-primary transition-colors"
             />
           </div>
         </div>
 
         <div className="flex items-center space-x-3">
           {/* Category Filter */}
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1.5">
             <span className="text-text-muted text-[11px]">Class:</span>
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="bg-surface-elevated border border-surface-border rounded px-2 py-1 text-xs text-text-main"
+              className="h-8 bg-surface-elevated border border-surface-border rounded px-2.5 text-xs text-text-main focus:outline-none focus:border-primary"
             >
               <option value="all">All Categories</option>
               <option value="moving_object">Moving Objects</option>
@@ -125,12 +125,12 @@ export const Discoveries: React.FC<DiscoveriesProps> = ({
           </div>
 
           {/* Sort Selector */}
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1.5">
             <span className="text-text-muted text-[11px]">Sort:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-surface-elevated border border-surface-border rounded px-2 py-1 text-xs text-text-main"
+              className="h-8 bg-surface-elevated border border-surface-border rounded px-2.5 text-xs text-text-main focus:outline-none focus:border-primary"
             >
               <option value="confidence_score">Detection Confidence</option>
               <option value="proper_motion">Angular Motion (″/yr)</option>

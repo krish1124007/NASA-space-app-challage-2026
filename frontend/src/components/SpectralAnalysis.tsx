@@ -130,15 +130,15 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
       {/* Top Controls Bar */}
-      <div className="bg-surface border-b border-surface-border px-4 sm:px-6 h-12 flex items-center justify-between gap-3 text-xs font-mono flex-shrink-0">
-        <div className="flex items-center space-x-3">
+      <div className="bg-surface border-b border-surface-border px-4 sm:px-6 h-12 flex items-center justify-between gap-3 text-xs font-mono flex-shrink-0 select-none">
+        <div className="flex items-center space-x-2.5">
           <span className="text-text-muted uppercase text-[11px] tracking-wider">
-            Spectral Source:
+            Source:
           </span>
           <select
             value={currentTargetId}
             onChange={(e) => onSelectTarget(e.target.value)}
-            className="px-2.5 py-1 rounded bg-surface-elevated border border-surface-border text-xs text-text-main font-mono focus:border-primary focus:outline-none"
+            className="h-8 px-2.5 rounded bg-surface-elevated border border-surface-border text-xs text-text-main font-mono focus:border-primary focus:outline-none"
           >
             {targets.map((t) => (
               <option key={t.id} value={t.id}>
@@ -146,21 +146,21 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
               </option>
             ))}
           </select>
-          <span className="text-secondary text-[11px]">
-            {spectrumData?.valid_channels_count} / 102 Nominal Channels Valid
+          <span className="text-secondary text-[11px] hidden md:inline">
+            ({spectrumData?.valid_channels_count || 102} / 102 Channels Valid)
           </span>
         </div>
 
         {/* Filter by Detector */}
-        <div className="flex items-center space-x-1 bg-surface-elevated p-1 rounded border border-surface-border">
-          <span className="text-text-muted text-[11px] px-2">Array:</span>
+        <div className="flex items-center space-x-1 h-8 bg-surface-card px-1 rounded-md border border-surface-border">
+          <span className="text-text-muted text-[11px] px-1.5 hidden sm:inline">Array:</span>
           {['all', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6'].map((d) => (
             <button
               key={d}
               onClick={() => setFilterDetector(d)}
-              className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors ${
+              className={`h-6 px-2 rounded text-[11px] font-mono transition-colors ${
                 filterDetector === d
-                  ? 'bg-primary text-[#0B1016] font-semibold'
+                  ? 'bg-surface-elevated text-primary font-semibold shadow-sm border border-surface-border'
                   : 'text-text-muted hover:text-text-main'
               }`}
             >
@@ -171,7 +171,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
 
         {/* Display Toggles */}
         <div className="flex items-center space-x-3 text-text-muted text-xs">
-          <label className="flex items-center space-x-1.5 cursor-pointer">
+          <label className="flex items-center space-x-1.5 cursor-pointer h-8">
             <input
               type="checkbox"
               checked={showFeatures}

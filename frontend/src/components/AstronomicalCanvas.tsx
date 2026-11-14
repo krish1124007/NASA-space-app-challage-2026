@@ -453,8 +453,8 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
       />
 
       {/* Floating Coordinate & Flux Cursor HUD */}
-      {cursorWorld && cursorPos && (
-        <div className="absolute top-3 left-3 bg-[#0B1016]/90 border border-surface-border backdrop-blur px-3 py-1.5 rounded text-[11px] font-mono text-secondary pointer-events-none shadow-lg flex flex-col space-y-0.5">
+      {cursorWorld && cursorPos ? (
+        <div className="absolute top-3 left-3 bg-[#0B1016]/92 border border-surface-border backdrop-blur-md px-3.5 py-2 rounded text-[11px] font-mono text-secondary pointer-events-none shadow-xl flex flex-col space-y-1 z-10">
           <div className="flex items-center space-x-3 text-text-main">
             <span>RA: <strong className="text-primary">{cursorWorld.raSex}</strong> ({cursorWorld.ra.toFixed(4)}°)</span>
             <span>DEC: <strong className="text-primary">{cursorWorld.decSex}</strong> ({cursorWorld.dec.toFixed(4)}°)</span>
@@ -462,8 +462,16 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
           <div className="flex items-center space-x-4 text-text-muted text-[10px]">
             <span>Pixel: [{cursorPos.x}, {cursorPos.y}]</span>
             <span>Est Flux: <span className="text-scientific-cyan font-semibold">{pixelFlux} MJy/sr</span></span>
-            <span>FOV: {fovArcmin}′</span>
+            <span>Zoom: {(zoom * 100).toFixed(0)}% ({(fovArcmin / zoom).toFixed(1)}′ view)</span>
           </div>
+        </div>
+      ) : (
+        <div className="absolute top-3 left-3 bg-[#0B1016]/80 border border-surface-border backdrop-blur px-2.5 py-1 rounded text-[10px] font-mono text-text-muted pointer-events-none shadow flex items-center space-x-2 z-10">
+          <span>Center: RA {centerRa.toFixed(4)}°, DEC {centerDec.toFixed(4)}°</span>
+          <span>·</span>
+          <span>FOV: {fovArcmin}′</span>
+          <span>·</span>
+          <span>Zoom: {(zoom * 100).toFixed(0)}%</span>
         </div>
       )}
 
@@ -540,11 +548,6 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
         >
           <Maximize2 className="w-4 h-4" />
         </button>
-      </div>
-
-      {/* Zoom Scale Pill */}
-      <div className="absolute bottom-3 left-16 bg-[#0B1016]/80 border border-surface-border px-2 py-0.5 rounded text-[10px] font-mono text-text-muted">
-        {(zoom * 100).toFixed(0)}% · {(fovArcmin / zoom).toFixed(1)}′ view
       </div>
     </div>
   );
