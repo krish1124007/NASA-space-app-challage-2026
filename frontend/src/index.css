@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0B1016;
+  color: #E6EDF3;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Astronomical & Scientific Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B1016;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1F2D3D;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2E4057;
+}
+
+/* Reticle & Crosshair styling */
+.reticle-cursor {
+  cursor: crosshair;
+}
+
+/* Monospace font helper */
+.font-mono-sci {
+  font-family: 'JetBrains Mono', monospace;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* Custom Range Input */
+input[type="range"] {
+  accent-color: #8CB7D8;
+}
+
+/* Tooltip & Subtle Badges */
+.badge-sci {
+  @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-mono border border-surface-border bg-surface text-secondary;
+}
+
