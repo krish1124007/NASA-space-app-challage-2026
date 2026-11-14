@@ -177,7 +177,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
       {/* Top Workspace Bar */}
-      <div className="bg-surface border-b border-surface-border px-4 py-2 flex items-center justify-between text-xs font-mono">
+      <div className="bg-surface border-b border-surface-border px-4 sm:px-6 h-12 flex items-center justify-between text-xs font-mono flex-shrink-0">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <span className="text-text-muted">Target:</span>

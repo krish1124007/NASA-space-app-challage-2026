@@ -130,7 +130,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
       {/* Top Controls Bar */}
-      <div className="bg-surface border-b border-surface-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+      <div className="bg-surface border-b border-surface-border px-4 sm:px-6 h-12 flex items-center justify-between gap-3 text-xs font-mono flex-shrink-0">
         <div className="flex items-center space-x-3">
           <span className="text-text-muted uppercase text-[11px] tracking-wider">
             Spectral Source:

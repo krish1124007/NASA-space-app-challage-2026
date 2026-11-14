@@ -157,7 +157,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
       {/* Top Controls Toolbar */}
-      <div className="bg-surface border-b border-surface-border px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="bg-surface border-b border-surface-border px-4 sm:px-6 h-12 flex items-center justify-between gap-3 text-xs flex-shrink-0">
         {/* Target Selector */}
         <div className="flex items-center space-x-3">
           <span className="text-text-muted font-mono uppercase text-[11px] tracking-wider">
