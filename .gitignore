@@ -4,9 +4,10 @@ node_modules/
 
 # Production builds
 dist/
-*/dist/
 build/
 */build/
+!frontend/dist/
+!frontend/dist/**
 
 # Python
 __pycache__/

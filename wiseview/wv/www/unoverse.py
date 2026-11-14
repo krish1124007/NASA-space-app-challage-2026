@@ -136,6 +136,10 @@ class SearchV3_Page(Resource):
         if legacy in ("1", "true", "True"):
             return make_response(render_template("flash3.html"))
         index_file = os.path.join(FRONTEND_DIST, "index.html")
+        if not os.path.exists(index_file):
+            alt_path = os.path.join(os.path.dirname(__file__), "dist", "index.html")
+            if os.path.exists(alt_path):
+                index_file = alt_path
         if os.path.exists(index_file):
             with open(index_file, "r", encoding="utf-8") as f:
                 html = f.read()
@@ -155,6 +159,8 @@ def legacy_page():
 def serve_frontend_assets(filename):
     """Serve SPHEREx Explorer bundled frontend JS/CSS assets."""
     assets_dir = os.path.join(FRONTEND_DIST, "assets")
+    if not os.path.exists(assets_dir):
+        assets_dir = os.path.join(os.path.dirname(__file__), "dist", "assets")
     return send_from_directory(assets_dir, filename)
 
 

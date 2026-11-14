@@ -19,3 +19,4 @@ echo.
 echo All services launched!
 echo Open in browser: http://127.0.0.1:3000
 pause
+
