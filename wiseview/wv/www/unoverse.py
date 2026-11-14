@@ -57,7 +57,14 @@ config.ensure_dirs()
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
+
+# Primary frontend path: frontend/dist in repo root
 FRONTEND_DIST = os.path.join(ROOT_DIR, "frontend", "dist")
+# Secondary fallback path: internal wiseview/wv/www/dist
+if not os.path.exists(os.path.join(FRONTEND_DIST, "index.html")):
+    INTERNAL_DIST = os.path.join(os.path.dirname(__file__), "dist")
+    if os.path.exists(os.path.join(INTERNAL_DIST, "index.html")):
+        FRONTEND_DIST = INTERNAL_DIST
 
 try:
     from backend.catalog import PRECONFIGURED_TARGETS
@@ -136,6 +143,10 @@ class SearchV3_Page(Resource):
         if legacy in ("1", "true", "True"):
             return make_response(render_template("flash3.html"))
         index_file = os.path.join(FRONTEND_DIST, "index.html")
+        if not os.path.exists(index_file):
+            alt_path = os.path.join(os.path.dirname(__file__), "dist", "index.html")
+            if os.path.exists(alt_path):
+                index_file = alt_path
         if os.path.exists(index_file):
             with open(index_file, "r", encoding="utf-8") as f:
                 html = f.read()
@@ -155,6 +166,8 @@ def legacy_page():
 def serve_frontend_assets(filename):
     """Serve SPHEREx Explorer bundled frontend JS/CSS assets."""
     assets_dir = os.path.join(FRONTEND_DIST, "assets")
+    if not os.path.exists(assets_dir):
+        assets_dir = os.path.join(os.path.dirname(__file__), "dist", "assets")
     return send_from_directory(assets_dir, filename)
 
 

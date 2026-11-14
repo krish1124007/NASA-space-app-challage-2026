@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+# dist is tracked so backend and wiseview can serve the built bundle directly
 dist-ssr
 *.local
 

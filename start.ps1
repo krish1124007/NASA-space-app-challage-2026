@@ -1,4 +1,4 @@
-﻿# SPHEREx Explorer Startup Script (PowerShell)
+# SPHEREx Explorer Startup Script (PowerShell)
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "  Launching SPHEREx Explorer & WiseView Scientific Suite  " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
@@ -18,3 +18,4 @@ Write-Host "`n✓ All services launched in separate windows!" -ForegroundColor C
 Write-Host "➜ Frontend Dev:  http://127.0.0.1:3000" -ForegroundColor Yellow
 Write-Host "➜ Backend & UI:  http://127.0.0.1:8000" -ForegroundColor Yellow
 Write-Host "➜ API Docs:      http://127.0.0.1:8000/docs" -ForegroundColor Yellow
+
