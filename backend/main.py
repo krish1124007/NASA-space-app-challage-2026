@@ -5,7 +5,7 @@ Provides professional astronomical search, WCS conversions, multi-epoch image cu
 difference imaging, 102-channel spectral analysis, and candidate detection.
 """
 
-from fastapi import FastAPI, Query, HTTPException, Response
+from fastapi import FastAPI, Query, HTTPException, Response, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
@@ -29,6 +29,7 @@ from backend.spherex_service import (
     extract_candidates_from_epochs,
     DISCOVERY_REGISTRY
 )
+from backend.nasa_ingest import parse_uploaded_fits, query_gaia_crossmatch, query_nasa_irsa_cutout
 
 app = FastAPI(
     title="SPHEREx Explorer API",
@@ -369,4 +370,45 @@ def get_detector_info():
 def get_all_channels():
     """Returns metadata for all 102 spectral channels."""
     return SPECTRAL_CHANNELS
+
+@app.post("/api/import/fits")
+async def upload_fits_file(file: UploadFile = File(...)):
+    """
+    Accepts an uploaded raw astronomical FITS file (.fits/.fit),
+    extracts the image array, parses WCS coordinates and metadata,
+    and returns a visual base64 tile with coordinate bounding box.
+    """
+    contents = await file.read()
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="Empty file uploaded.")
+    result = parse_uploaded_fits(contents, filename=file.filename or "uploaded.fits")
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result.get("message", "Error parsing FITS file"))
+    return result
+
+class IrsaQueryRequest(BaseModel):
+    ra: float
+    dec: float
+    mission: str = "spherex"
+    fov_arcmin: float = 10.0
+
+@app.post("/api/import/irsa")
+def query_nasa_irsa(req: IrsaQueryRequest):
+    """
+    Connects to NASA IRSA (Infrared Science Archive) Simple Image Access Protocol (SIA2)
+    and IBE Cutout API to retrieve observation footprints and cutouts.
+    """
+    return query_nasa_irsa_cutout(req.ra, req.dec, req.mission, req.fov_arcmin)
+
+@app.get("/api/crossmatch/gaia")
+def get_gaia_crossmatch(
+    ra: float = Query(...),
+    dec: float = Query(...),
+    radius_arcmin: float = Query(6.0)
+):
+    """
+    Returns Gaia DR3 astrometric reference catalog sources with proper motion vectors (pm_ra, pm_dec).
+    """
+    return query_gaia_crossmatch(ra, dec, radius_arcmin)
+
 

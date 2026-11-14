@@ -12,7 +12,8 @@ import {
   Share2, 
   Check, 
   Radio,
-  ChevronRight
+  ChevronRight,
+  Upload
 } from 'lucide-react';
 
 interface TopNavProps {
@@ -20,6 +21,7 @@ interface TopNavProps {
   onSelectTab: (tab: ViewTab) => void;
   onOpenDoc: () => void;
   onOpenPreferences: () => void;
+  onOpenImport?: () => void;
   activeTargetName?: string;
   activeCoords?: { ra: number; dec: number };
 }
@@ -29,6 +31,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   onSelectTab,
   onOpenDoc,
   onOpenPreferences,
+  onOpenImport,
   activeTargetName,
   activeCoords,
 }) => {
@@ -168,6 +171,18 @@ export const TopNav: React.FC<TopNavProps> = ({
 
           {/* Vertical Separator */}
           <div className="hidden sm:block w-[1px] h-5 bg-surface-border/80" />
+
+          {/* Action: Import NASA Data / FITS */}
+          {onOpenImport && (
+            <button
+              onClick={onOpenImport}
+              title="Import data from NASA IRSA or upload custom FITS file"
+              className="flex items-center space-x-1.5 h-8 px-2.5 rounded border border-primary/40 bg-primary/10 hover:bg-primary/20 text-xs font-mono text-primary transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline font-semibold">Import Data</span>
+            </button>
+          )}
 
           {/* Action: Share / Deep Link */}
           <button

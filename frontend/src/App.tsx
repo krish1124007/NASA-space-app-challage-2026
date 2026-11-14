@@ -12,6 +12,7 @@ import { HeaderModal } from './components/HeaderModal';
 import { CandidateModal } from './components/CandidateModal';
 import { PreferencesModal } from './components/PreferencesModal';
 import { DocumentationModal } from './components/DocumentationModal';
+import { ImportDataModal } from './components/ImportDataModal';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<ViewTab>('overview');
@@ -27,6 +28,7 @@ export const App: React.FC = () => {
   const [candidateModalData, setCandidateModalData] = useState<{ candidate: DetectedCandidate; field: string } | null>(null);
   const [showPreferences, setShowPreferences] = useState<boolean>(false);
   const [showDocumentation, setShowDocumentation] = useState<boolean>(false);
+  const [showImportModal, setShowImportModal] = useState<boolean>(false);
 
   // Preferences
   const [coordFormat, setCoordFormat] = useState<'sexagesimal' | 'decimal'>('sexagesimal');
@@ -114,6 +116,7 @@ export const App: React.FC = () => {
         }}
         onOpenDoc={() => setShowDocumentation(true)}
         onOpenPreferences={() => setShowPreferences(true)}
+        onOpenImport={() => setShowImportModal(true)}
         activeTargetName={activeTargetName}
         activeCoords={activeCoords}
       />
@@ -203,6 +206,18 @@ export const App: React.FC = () => {
       {showDocumentation && (
         <DocumentationModal
           onClose={() => setShowDocumentation(false)}
+        />
+      )}
+
+      {showImportModal && (
+        <ImportDataModal
+          onClose={() => setShowImportModal(false)}
+          activeCoords={activeCoords}
+          onLoadCustomFits={(custom) => {
+            setActiveCoords({ ra: custom.ra, dec: custom.dec });
+            setCurrentTargetId('');
+            setCurrentTab('explorer');
+          }}
         />
       )}
     </div>
