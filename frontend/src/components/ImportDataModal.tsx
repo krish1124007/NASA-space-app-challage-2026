@@ -296,7 +296,7 @@ export const ImportDataModal: React.FC<ImportDataModalProps> = ({
                 <button
                   type="submit"
                   disabled={irsaLoading}
-                  className="w-full py-2 rounded bg-primary hover:bg-primary-hover text-[#0B1016] font-semibold text-xs transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50 font-sans"
+                  className="w-full py-2 rounded bg-primary hover:bg-primary-hover text-[#05080D] font-semibold text-xs transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50 font-sans"
                 >
                   {irsaLoading ? (
                     <>
@@ -314,7 +314,7 @@ export const ImportDataModal: React.FC<ImportDataModalProps> = ({
 
               {/* IRSA Result Card */}
               {irsaResult && (
-                <div className="space-y-3 p-4 rounded bg-[#070B0E] border border-surface-border">
+                <div className="space-y-3 p-4 rounded bg-[#05080D] border border-surface-border">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-scientific-success font-semibold flex items-center space-x-1.5">
                       <Check className="w-3.5 h-3.5" />
@@ -415,7 +415,7 @@ export const ImportDataModal: React.FC<ImportDataModalProps> = ({
 
               {/* Upload Result Preview */}
               {uploadResult && (
-                <div className="p-4 rounded bg-[#070B0E] border border-surface-border space-y-3">
+                <div className="p-4 rounded bg-[#05080D] border border-surface-border space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="font-semibold text-text-main text-xs">{uploadResult.filename}</span>
@@ -447,7 +447,7 @@ export const ImportDataModal: React.FC<ImportDataModalProps> = ({
 
                   <button
                     onClick={handleApplyUploadedFits}
-                    className="w-full py-2 rounded bg-scientific-success hover:bg-scientific-success/90 text-[#0B1016] font-semibold text-xs transition-colors flex items-center justify-center space-x-1.5 font-sans"
+                    className="w-full py-2 rounded bg-scientific-success hover:bg-scientific-success/90 text-[#05080D] font-semibold text-xs transition-colors flex items-center justify-center space-x-1.5 font-sans"
                   >
                     <span>Load Directly into Sky Explorer</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -484,7 +484,7 @@ export const ImportDataModal: React.FC<ImportDataModalProps> = ({
                   Querying Gaia DR3 astrometric catalog...
                 </div>
               ) : (
-                <div className="max-h-60 overflow-y-auto border border-surface-border rounded bg-[#070B0E]">
+                <div className="max-h-60 overflow-y-auto border border-surface-border rounded bg-[#05080D]">
                   <table className="w-full text-left text-[11px]">
                     <thead className="bg-surface-elevated border-b border-surface-border text-text-muted">
                       <tr>
@@ -524,7 +524,7 @@ export const ImportDataModal: React.FC<ImportDataModalProps> = ({
                 </p>
               </div>
 
-              <div className="p-3.5 rounded bg-[#070B0E] border border-surface-border font-mono text-[11px] leading-relaxed text-secondary overflow-x-auto space-y-2">
+              <div className="p-3.5 rounded bg-[#05080D] border border-surface-border font-mono text-[11px] leading-relaxed text-secondary overflow-x-auto space-y-2">
                 <div className="text-scientific-cyan"># 1. Query NASA IRSA SIA2 Protocol using PyVO</div>
                 <div className="text-text-main">import pyvo as vo</div>
                 <div>service = vo.dal.SIAService('https://irsa.ipac.caltech.edu/SIA')</div>

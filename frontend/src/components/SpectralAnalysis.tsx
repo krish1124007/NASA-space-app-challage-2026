@@ -226,7 +226,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                 className="w-full h-auto min-w-[700px] select-none font-mono"
               >
                 {/* Background grid */}
-                <rect x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} fill="#090E14" stroke="#1F2D3D" />
+                <rect x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} fill="#090E14" stroke="#1B2533" />
 
                 {/* 6 Detector Background Bands */}
                 {detectorBands.map((band) => {
@@ -240,13 +240,13 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                         width={x2 - x1} 
                         height={plotHeight} 
                         fill={band.color} 
-                        stroke="#1F2D3D" 
+                        stroke="#1B2533" 
                         strokeWidth="0.5" 
                       />
                       <text 
                         x={x1 + 6} 
                         y={padding.top + 14} 
-                        fill="#8795A3" 
+                        fill="#7D8A99" 
                         fontSize="9" 
                         opacity="0.8"
                       >
@@ -263,7 +263,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                   return (
                     <g key={frac}>
                       <line x1={padding.left} y1={y} x2={padding.left + plotWidth} y2={y} stroke="#17222F" strokeDasharray="3 3" />
-                      <text x={padding.left - 8} y={y + 3} fill="#5A6875" fontSize="10" textAnchor="end">
+                      <text x={padding.left - 8} y={y + 3} fill="#7D8A99" fontSize="10" textAnchor="end">
                         {fVal.toFixed(1)}
                       </text>
                     </g>
@@ -276,7 +276,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                   return (
                     <g key={w}>
                       <line x1={x} y1={padding.top} x2={x} y2={padding.top + plotHeight} stroke="#17222F" strokeDasharray="3 3" />
-                      <text x={x} y={padding.top + plotHeight + 18} fill="#8795A3" fontSize="10" textAnchor="middle">
+                      <text x={x} y={padding.top + plotHeight + 18} fill="#7D8A99" fontSize="10" textAnchor="middle">
                         {w.toFixed(1)} µm
                       </text>
                     </g>
@@ -302,7 +302,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                       <text 
                         x={x} 
                         y={padding.top + 28} 
-                        fill={isAbsorption ? "#5EEAD4" : "#E5A962"} 
+                        fill={isAbsorption ? "#4FE0C0" : "#E0B04F"} 
                         fontSize="8.5" 
                         textAnchor="middle"
                         transform={`rotate(-90 ${x} ${padding.top + 28})`}
@@ -336,7 +336,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                 <path 
                   d={spectralPath} 
                   fill="none" 
-                  stroke="#8CB7D8" 
+                  stroke="#8AB4E0" 
                   strokeWidth="2" 
                 />
 
@@ -348,8 +348,8 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                     const y = getY(0.5);
                     return (
                       <g key={`flag-${c.channel}`}>
-                        <line x1={x - 3} y1={y - 3} x2={x + 3} y2={y + 3} stroke="#E06C75" strokeWidth="1.2" />
-                        <line x1={x + 3} y1={y - 3} x2={x - 3} y2={y + 3} stroke="#E06C75" strokeWidth="1.2" />
+                        <line x1={x - 3} y1={y - 3} x2={x + 3} y2={y + 3} stroke="#E05F5F" strokeWidth="1.2" />
+                        <line x1={x + 3} y1={y - 3} x2={x - 3} y2={y + 3} stroke="#E05F5F" strokeWidth="1.2" />
                       </g>
                     );
                   }
@@ -364,8 +364,8 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                       cx={x}
                       cy={y}
                       r={isSel ? 5 : 2.5}
-                      fill={isSel ? '#5EEAD4' : '#8CB7D8'}
-                      stroke={isSel ? '#FFFFFF' : '#0B1016'}
+                      fill={isSel ? '#4FE0C0' : '#8AB4E0'}
+                      stroke={isSel ? '#FFFFFF' : '#05080D'}
                       strokeWidth={isSel ? 1.5 : 0.8}
                       className="cursor-pointer hover:scale-150 transition-transform"
                       onMouseEnter={() => setHoveredChannel(c)}
@@ -383,7 +383,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                       y1={padding.top} 
                       x2={getX(currentChannelInfo.wavelength_um)} 
                       y2={padding.top + plotHeight} 
-                      stroke="#5EEAD4" 
+                      stroke="#4FE0C0" 
                       strokeWidth="1"
                       strokeDasharray="4 2"
                     />
@@ -392,7 +392,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                       cy={getY(currentChannelInfo.flux_mjy || 0)} 
                       r="6" 
                       fill="none" 
-                      stroke="#5EEAD4" 
+                      stroke="#4FE0C0" 
                       strokeWidth="2" 
                     />
                   </g>
@@ -402,7 +402,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                 <text 
                   x={padding.left + plotWidth / 2} 
                   y={svgHeight - 12} 
-                  fill="#E6EDF3" 
+                  fill="#C9D1D9" 
                   fontSize="11" 
                   textAnchor="middle"
                 >
@@ -411,7 +411,7 @@ export const SpectralAnalysis: React.FC<SpectralAnalysisProps> = ({
                 <text 
                   x={-padding.top - plotHeight / 2} 
                   y={18} 
-                  fill="#E6EDF3" 
+                  fill="#C9D1D9" 
                   fontSize="11" 
                   textAnchor="middle" 
                   transform="rotate(-90)"

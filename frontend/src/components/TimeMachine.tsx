@@ -131,12 +131,81 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
       const ra = target ? target.coordinates.ra_deg : activeCoords.ra;
       const dec = target ? target.coordinates.dec_deg : activeCoords.dec;
 
-      const res = await ApiService.getObservations({
-        target_id: targetId,
-        channel: 12,
-        fov_arcmin: 10.0,
-        ...(isLive ? { use_live_spherex: true } as any : {})
-      });
+      let res: ObservationsResponse;
+      if (isLive) {
+        const detector = target?.default_detector || 'D4';
+        const frameData = await ApiService.getSpherexLiveFrames({
+          ra,
+          dec,
+          detector,
+          sizeArcsec: 600,
+          stretch: 1.0,
+          invert: false,
+          pixels: 512,
+        });
+
+        const dims: [number, number] = [
+          frameData.NAXIS1 || 512,
+          frameData.NAXIS2 || 512,
+        ];
+        const observations = (frameData.ims || []).map((url, i) => {
+          const mjd = (frameData.all_mjds && frameData.all_mjds[i]) || (frameData.all_mjds && frameData.all_mjds[0]) || 0;
+          const fw = (frameData.frame_waves && frameData.frame_waves[i]) || [frameData.wave_min_um, frameData.wave_max_um];
+          return {
+            epoch_index: i,
+            epoch_id: `VISIT-${String(i + 1).padStart(2, '0')}`,
+            obs_date: mjd ? new Date((mjd - 40587) * 86400000).toISOString() : new Date().toISOString(),
+            mjd,
+            image_url: url,
+            flux_mjy: 0,
+            quality_flag: 0,
+            metadata: {
+              telescope: 'NASA SPHEREx Level 2 MEF (Live IRSA)',
+              instrument: 'SPHEREx All-Sky Spectral Imager',
+              data_release: 'SPHEREx DR1',
+              channel: 0,
+              detector: frameData.detector,
+              wavelength_um: frameData.wavelength_um || ((fw[0] || 0) + (fw[1] || 0)) / 2 || 0,
+              fov_arcmin: 10.0,
+              pixel_scale_arcsec: frameData.pixscale || 2.344,
+              dimensions: dims,
+              center_coordinates: { ra: frameData.CRVAL1 || ra, dec: frameData.CRVAL2 || dec },
+              background_flux_mjy_sr: 0,
+              peak_flux: frameData.max || 0,
+              mean_flux: ((frameData.min || 0) + (frameData.max || 0)) / 2,
+              rms_noise: 0,
+              quality_flags: {
+                zodiacal_subtracted: false,
+                cosmic_ray_masked: false,
+                saturation_detected: false,
+                stray_light_fraction: 0,
+              },
+              wave_min_um: fw[0],
+              wave_max_um: fw[1],
+            },
+          };
+        });
+
+        res = {
+          target_id: target?.id,
+          target_name: target ? `${target.name} (Live SPHEREx)` : `RA ${ra.toFixed(4)}, DEC ${dec.toFixed(4)}`,
+          ra_deg: frameData.CRVAL1 || ra,
+          dec_deg: frameData.CRVAL2 || dec,
+          fov_arcmin: 10.0,
+          channel: 0,
+          detector: frameData.detector,
+          wavelength_um: frameData.wavelength_um || 0,
+          total_epochs: observations.length,
+          observations,
+          detected_candidates: [],
+        };
+      } else {
+        res = await ApiService.getObservations({
+          target_id: targetId,
+          channel: 12,
+          fov_arcmin: 10.0,
+        });
+      }
       setObservationsData(res);
       setCurrentEpochIdx(0);
       setBlinkEpochA(0);
@@ -443,7 +512,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
       </div>
 
       {/* 2. DEDICATED WISEVIEW MULTI-EPOCH FRAME PLAYER DECK */}
-      <div className="bg-[#0B1016] border-b border-surface-border px-3 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-3 text-xs flex-shrink-0 select-none">
+      <div className="bg-[#05080D] border-b border-surface-border px-3 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-3 text-xs flex-shrink-0 select-none">
         
         {/* Playback Controls & Frame Steppers */}
         <div className="flex items-center space-x-2">
@@ -464,8 +533,8 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
                 title="Play/Pause timeline (Spacebar)"
                 className={`flex items-center space-x-1.5 h-7 px-3 rounded font-mono font-semibold transition-all ${
                   isPlaying
-                    ? 'bg-scientific-warning text-[#0B1016] shadow-[0_0_10px_rgba(229,169,98,0.5)]'
-                    : 'bg-primary text-[#0B1016] hover:bg-primary-hover shadow-sm'
+                    ? 'bg-scientific-warning text-[#05080D] shadow-[0_0_10px_rgba(229,169,98,0.5)]'
+                    : 'bg-primary text-[#05080D] hover:bg-primary-hover shadow-sm'
                 }`}
               >
                 {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
@@ -536,7 +605,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
                 title={`Frame ${idx + 1}: ${ep.epoch_id} (${ep.obs_date.slice(0, 10)})`}
                 className={`flex items-center space-x-1 px-2.5 h-7 rounded text-xs font-mono transition-all ${
                   isActive
-                    ? 'bg-scientific-cyan text-[#0B1016] font-bold shadow-[0_0_12px_rgba(94,234,212,0.5)]'
+                    ? 'bg-scientific-cyan text-[#05080D] font-bold shadow-[0_0_12px_rgba(94,234,212,0.5)]'
                     : isBlinkA
                     ? 'border border-primary text-primary bg-primary/10'
                     : isBlinkB
@@ -715,7 +784,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
       <div className="flex-1 flex overflow-hidden">
         
         {/* CENTER VIEWPORT (Dynamic based on comparison mode) */}
-        <div className="flex-1 flex flex-col bg-[#070B0E] relative overflow-hidden">
+        <div className="flex-1 flex flex-col bg-[#05080D] relative overflow-hidden">
           
           {/* BLINK OR MOVIE MODE */}
           {(mode === 'blink' || mode === 'movie') && (
@@ -750,7 +819,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
               )}
 
               {/* Epoch Indicator Overlay HUD (Top-Left) */}
-              <div className="absolute top-4 left-4 bg-[#0B1016]/92 border border-surface-border backdrop-blur-md p-3 rounded font-mono text-xs space-y-1.5 shadow-xl max-w-xs pointer-events-none">
+              <div className="absolute top-4 left-4 bg-[#05080D]/92 border border-surface-border backdrop-blur-md p-3 rounded font-mono text-xs space-y-1.5 shadow-xl max-w-xs pointer-events-none">
                 <div className="flex items-center space-x-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${mode === 'blink' ? (currentEpochIdx === blinkEpochA ? 'bg-primary' : 'bg-scientific-cyan') : 'bg-scientific-success'} animate-ping`} />
                   <span className="text-text-main font-semibold">Active: {currentEpoch?.epoch_id}</span>
@@ -779,7 +848,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
               </div>
 
               {/* Keyboard Shortcuts Pill (Bottom-Left) */}
-              <div className="absolute bottom-3 left-3 bg-[#0B1016]/80 border border-surface-border backdrop-blur px-2.5 py-1 rounded text-[10px] font-mono text-text-muted pointer-events-none hidden md:flex items-center space-x-2">
+              <div className="absolute bottom-3 left-3 bg-[#05080D]/80 border border-surface-border backdrop-blur px-2.5 py-1 rounded text-[10px] font-mono text-text-muted pointer-events-none hidden md:flex items-center space-x-2">
                 <span>[Space] Play/Pause</span>
                 <span>·</span>
                 <span>[←/→] Step</span>
@@ -924,7 +993,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
 
           {/* PAN-STARRS OPTICAL COMPARISON STRIP (WISEVIEW INTEGRATION) */}
           {showPawnstars && (
-            <div className="bg-[#0B1016]/95 border-t border-surface-border px-4 py-2 flex items-center justify-between gap-4 text-xs font-mono flex-shrink-0 animate-fadeIn select-none">
+            <div className="bg-[#05080D]/95 border-t border-surface-border px-4 py-2 flex items-center justify-between gap-4 text-xs font-mono flex-shrink-0 animate-fadeIn select-none">
               <div className="flex items-center space-x-3">
                 <span className="text-[11px] font-bold text-primary uppercase tracking-wider flex items-center space-x-1.5">
                   <Globe className="w-3.5 h-3.5" />
@@ -1114,7 +1183,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
 
                 <button
                   onClick={() => onOpenCandidateModal(selectedCandidate, observationsData?.target_name || "Field Observation")}
-                  className="w-full py-2.5 px-3 rounded bg-primary hover:bg-primary-hover text-[#0B1016] text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-[0.98]"
+                  className="w-full py-2.5 px-3 rounded bg-primary hover:bg-primary-hover text-[#05080D] text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-[0.98]"
                 >
                   <BookmarkPlus className="w-4 h-4" />
                   <span>Flag as Candidate Discovery</span>

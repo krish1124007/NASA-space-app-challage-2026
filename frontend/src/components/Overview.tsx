@@ -77,7 +77,7 @@ export const Overview: React.FC<OverviewProps> = ({
               />
               <button
                 type="submit"
-                className="absolute right-1.5 h-7 px-3.5 rounded bg-primary text-[#0B1016] text-xs font-semibold hover:bg-primary-hover transition-colors flex items-center space-x-1.5"
+                className="absolute right-1.5 h-7 px-3.5 rounded bg-primary text-[#05080D] text-xs font-semibold hover:bg-primary-hover transition-colors flex items-center space-x-1.5"
               >
                 <span>Explore</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -266,7 +266,7 @@ export const Overview: React.FC<OverviewProps> = ({
               <div className="flex items-center space-x-2 pt-2">
                 <button
                   onClick={() => onNavigateTab('explorer')}
-                  className="flex-1 h-8 rounded bg-primary text-[#0B1016] hover:bg-primary-hover text-[11px] font-semibold flex items-center justify-center space-x-1.5 transition-colors"
+                  className="flex-1 h-8 rounded bg-primary text-[#05080D] hover:bg-primary-hover text-[11px] font-semibold flex items-center justify-center space-x-1.5 transition-colors"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Open Custom Sky Field</span>

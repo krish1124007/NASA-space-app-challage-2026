@@ -174,7 +174,7 @@ export const CandidateModal: React.FC<CandidateModalProps> = ({
             <button
               type="submit"
               disabled={saving || success}
-              className="px-4 py-1.5 rounded bg-primary hover:bg-primary-hover text-[#0B1016] font-semibold text-xs transition-colors disabled:opacity-50"
+              className="px-4 py-1.5 rounded bg-primary hover:bg-primary-hover text-[#05080D] font-semibold text-xs transition-colors disabled:opacity-50"
             >
               {saving ? 'Logging...' : 'Submit to Registry'}
             </button>

@@ -57,7 +57,7 @@ config.ensure_dirs()
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
-FRONTEND_DIST = os.path.join(ROOT_DIR, "frontend", "dist")
+FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "static")
 
 try:
     from backend.catalog import PRECONFIGURED_TARGETS
@@ -76,7 +76,7 @@ except Exception as e:
     print(f"Warning: SPHEREx Explorer backend routes not loaded in Flask: {e}")
 
 # Bump to invalidate browser-cached static assets after frontend changes.
-app.config["ASSET_VERSION"] = os.environ.get("WV_ASSET_VERSION", "2026.11.14")
+app.config["ASSET_VERSION"] = os.environ.get("WV_ASSET_VERSION", "2026.11.14.4")
 
 # Serialize first-time SPHEREx downloads so two browser tabs do not fetch the
 # same cutouts twice.

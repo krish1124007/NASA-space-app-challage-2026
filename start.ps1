@@ -6,9 +6,12 @@ Write-Host "==========================================================" -Foregro
 $WorkspaceRoot = $PSScriptRoot
 Set-Location $WorkspaceRoot
 
+$PythonExe = Join-Path $WorkspaceRoot "wiseview\.venv\Scripts\python.exe"
+if (-not (Test-Path $PythonExe)) { $PythonExe = "python" }
+
 # 1. Launch FastAPI Backend on Port 8000
 Write-Host "`n[1/2] Starting Scientific Backend on http://127.0.0.1:8000..." -ForegroundColor Green
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$WorkspaceRoot'; python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$WorkspaceRoot'; & '$PythonExe' -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload"
 
 # 2. Launch Vite Frontend on Port 3000
 Write-Host "[2/2] Starting Frontend Dev Server on http://127.0.0.1:3000..." -ForegroundColor Green

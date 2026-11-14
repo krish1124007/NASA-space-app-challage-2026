@@ -59,7 +59,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0B1016]/95 backdrop-blur-md border-b border-surface-border select-none">
+    <header className="sticky top-0 z-50 bg-[#05080D]/95 backdrop-blur-md border-b border-surface-border select-none">
       {/* Main Navigation Bar */}
       <div className="w-full px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
         

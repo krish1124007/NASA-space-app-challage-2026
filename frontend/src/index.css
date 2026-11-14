@@ -6,32 +6,36 @@
   color-scheme: dark;
 }
 
+* {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
 body {
   margin: 0;
   padding: 0;
-  background-color: #0B1016;
-  color: #E6EDF3;
-  font-family: 'Inter', sans-serif;
+  background-color: #05080D;
+  color: #C9D1D9;
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', 'Fira Code', 'Source Code Pro', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
   -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.01em;
 }
 
 /* Custom Astronomical & Scientific Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #0B1016;
+  background: #05080D;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #1F2D3D;
-  border-radius: 3px;
+  background: #1B2533;
+  border-radius: 0;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #2E4057;
+  background: #2A3647;
 }
 
 /* Reticle & Crosshair styling */
@@ -41,17 +45,25 @@ body {
 
 /* Monospace font helper */
 .font-mono-sci {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', 'Fira Code', 'Source Code Pro', ui-monospace, Menlo, Consolas, monospace;
   font-feature-settings: "tnum" 1, "zero" 1;
 }
 
 /* Custom Range Input */
 input[type="range"] {
-  accent-color: #8CB7D8;
+  accent-color: #8AB4E0;
+  background: #1B2533;
 }
 
 /* Tooltip & Subtle Badges */
 .badge-sci {
-  @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-mono border border-surface-border bg-surface text-secondary;
+  @apply inline-flex items-center px-2 py-0.5 text-xs font-mono border border-surface-border bg-surface text-secondary;
 }
 
+/* Terminal hardening */
+.backdrop-blur, .backdrop-blur-md, .backdrop-blur-sm {
+  backdrop-filter: none !important;
+}
+.transition-colors, .transition-all, .transition {
+  transition-duration: 100ms !important;
+}

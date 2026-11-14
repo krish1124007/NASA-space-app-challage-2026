@@ -58,6 +58,8 @@ export interface ObservationMetadata {
     saturation_detected: boolean;
     stray_light_fraction: number;
   };
+  wave_min_um?: number;
+  wave_max_um?: number;
 }
 
 export interface ObservationEpoch {

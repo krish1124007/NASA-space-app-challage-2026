@@ -17,3 +17,9 @@ cache/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Generated React frontend build synced from frontend/dist
+wv/www/static/index.html
+wv/www/static/assets/
+wv/www/static/favicon.svg
+wv/www/static/icons.svg

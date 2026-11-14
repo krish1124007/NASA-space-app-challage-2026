@@ -57,6 +57,7 @@ export const ApiService = {
     channel?: number;
     stretch?: string;
     colormap?: string;
+    use_live_spherex?: boolean;
   }): Promise<ObservationsResponse> {
     const query = new URLSearchParams();
     if (params.target_id) query.append('target_id', params.target_id);
@@ -66,6 +67,7 @@ export const ApiService = {
     if (params.channel !== undefined) query.append('channel', params.channel.toString());
     if (params.stretch) query.append('stretch', params.stretch);
     if (params.colormap) query.append('colormap', params.colormap);
+    if (params.use_live_spherex) query.append('use_live_spherex', 'true');
 
     const res = await fetch(`${API_BASE}/observations?${query.toString()}`);
     if (!res.ok) throw new Error('Failed to load observations');
@@ -178,8 +180,13 @@ export const ApiService = {
     CRPIX2: number;
     CRVAL1: number;
     CRVAL2: number;
+    NAXIS1: number;
+    NAXIS2: number;
     pixscale: number;
     n_visits: number;
+    frame_waves?: number[][];
+    wave_min_um?: number | null;
+    wave_max_um?: number | null;
     wavelength_note?: string;
   }> {
     const query = new URLSearchParams();

@@ -99,7 +99,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
         <div className="px-5 py-3 border-t border-surface-border bg-surface-elevated flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded bg-primary hover:bg-primary-hover text-[#0B1016] font-semibold text-xs"
+            className="px-4 py-1.5 rounded bg-primary hover:bg-primary-hover text-[#05080D] font-semibold text-xs"
           >
             Done
           </button>

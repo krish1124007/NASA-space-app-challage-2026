@@ -101,7 +101,7 @@ export const DocumentationModal: React.FC<DocumentationModalProps> = ({ onClose 
           <span>SPHEREx Explorer v1.0.0</span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded bg-primary hover:bg-primary-hover text-[#0B1016] font-semibold text-xs font-sans"
+            className="px-4 py-1.5 rounded bg-primary hover:bg-primary-hover text-[#05080D] font-semibold text-xs font-sans"
           >
             Close Guide
           </button>

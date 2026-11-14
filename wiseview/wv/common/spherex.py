@@ -268,7 +268,16 @@ def wavelength_grid(hdul: fits.HDUList, detector: str = "D2") -> np.ndarray | No
         return None
     ny, nx = data.shape
     try:
-        spectral = WCS(image_hdu.header, fobj=hdul, key="W")
+        # SPHEREx cutouts carry SIP coefficients for the imaging WCS, but the
+        # spectral WCS (key "W") must not inherit them; strip them so astropy
+        # does not warn about an inconsistent CTYPE/-SIP combination.
+        header = image_hdu.header.copy()
+        for key in list(header.keys()):
+            if key.startswith(("A_", "B_", "AP_", "BP_")) or key in {
+                "A_ORDER", "B_ORDER", "AP_ORDER", "BP_ORDER",
+            }:
+                del header[key]
+        spectral = WCS(header, fobj=hdul, key="W")
         spectral.sip = None
         xx, yy = np.meshgrid(np.arange(nx), np.arange(ny))
         world = spectral.pixel_to_world(xx, yy)

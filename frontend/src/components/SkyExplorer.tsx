@@ -192,8 +192,8 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
           </div>
           <div className="hidden md:flex items-center space-x-2 text-text-muted">
             <span>Epoch:</span>
-            <span className="px-1.5 py-0.5 rounded bg-surface-elevated text-primary font-medium">
-              {currentEpoch?.epoch_id || 'EP-2025A'} ({currentEpochIdx + 1}/{observationsData?.total_epochs || 4})
+            <span className="px-1.5 py-0.5 border border-primary bg-surface-elevated text-primary font-medium">
+              [ {currentEpoch?.epoch_id || 'EP-2025A'} ({currentEpochIdx + 1}/{observationsData?.total_epochs || 4}) ]
             </span>
             <span className="text-secondary">{currentEpoch?.obs_date ? new Date(currentEpoch.obs_date).toLocaleDateString() : ''}</span>
           </div>
@@ -207,7 +207,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
               className="flex items-center space-x-1 px-2.5 py-1 rounded bg-surface-elevated border border-surface-border hover:border-primary/50 text-secondary hover:text-text-main transition-colors"
             >
               <FileCode className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">FITS Header</span>
+              <span className="hidden sm:inline">[ FITS Header ]</span>
             </button>
           )}
 
@@ -216,7 +216,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
             className="flex items-center space-x-1 px-2.5 py-1 rounded bg-surface-elevated border border-surface-border hover:border-scientific-cyan/50 text-scientific-cyan transition-colors"
           >
             <Clock className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Time Machine</span>
+            <span className="hidden sm:inline">[ Time Machine ]</span>
           </button>
         </div>
       </div>
@@ -233,7 +233,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
             {/* Target Preset Selector */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">
-                Benchmark Targets
+                ── BENCHMARK TARGETS ──
               </label>
               <select
                 value={currentTargetId || ''}
@@ -252,7 +252,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
             <form onSubmit={handleSearchSubmit} className="space-y-3 pt-2 border-t border-surface-border">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-                  Coordinates (J2000)
+                  ── COORDINATES (J2000) ──
                 </span>
                 <span className="text-[10px] text-text-muted font-mono">ICRS</span>
               </div>
@@ -360,17 +360,17 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2 px-3 rounded bg-primary hover:bg-primary-hover text-[#0B1016] text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors disabled:opacity-50"
+                className="w-full py-2 px-3 rounded bg-primary hover:bg-primary-hover text-[#05080D] text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors disabled:opacity-50"
               >
                 {loading ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Querying IRSA...</span>
+                    <span>[ ⏳ Querying IRSA... ]</span>
                   </>
                 ) : (
                   <>
                     <Search className="w-3.5 h-3.5" />
-                    <span>Search & Load Cutout</span>
+                    <span>[ ⌕ Search & Load Cutout ]</span>
                   </>
                 )}
               </button>
@@ -386,7 +386,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
             {/* Display Intensity & Colormap Controls */}
             <div className="space-y-3 pt-3 border-t border-surface-border">
               <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block">
-                Intensity Stretch & Palette
+                ── INTENSITY STRETCH & PALETTE ──
               </span>
 
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -433,11 +433,11 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
           className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-surface border border-surface-border text-text-muted hover:text-text-main p-1 rounded-r shadow"
           title={isLeftCollapsed ? "Expand Controls" : "Collapse Controls"}
         >
-          {isLeftCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+          {isLeftCollapsed ? '[>]' : '[<]'}
         </button>
 
         {/* CENTER PRIMARY ASTRONOMICAL VIEWER (~60-70%) */}
-        <div className="flex-1 flex flex-col bg-[#070B0E] relative overflow-hidden">
+        <div className="flex-1 flex flex-col bg-[#05080D] relative overflow-hidden">
           {currentEpoch ? (
             <AstronomicalCanvas
               imageUrl={currentEpoch.image_url}
@@ -476,7 +476,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
                       onClick={() => setCurrentEpochIdx(idx)}
                       className={`h-7 px-2.5 rounded text-xs font-mono transition-colors flex items-center justify-center ${
                         currentEpochIdx === idx
-                          ? 'bg-primary text-[#0B1016] font-semibold shadow-sm'
+                          ? 'bg-primary text-[#05080D] font-semibold shadow-sm'
                           : 'bg-surface-elevated text-secondary hover:text-text-main border border-surface-border'
                       }`}
                     >
@@ -507,7 +507,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
           className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-surface border border-surface-border text-text-muted hover:text-text-main p-1 rounded-l shadow"
           title={isRightCollapsed ? "Expand Inspector" : "Collapse Inspector"}
         >
-          {isRightCollapsed ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          {isRightCollapsed ? '[<]' : '[>]'}
         </button>
 
         {/* RIGHT SCIENTIFIC METADATA INSPECTOR PANEL (~20%) */}
@@ -521,7 +521,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-                  Target Telemetry
+                  ── TARGET TELEMETRY ──
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-mono border border-scientific-success/30 bg-scientific-success/10 text-scientific-success">
                   Valid WCS
@@ -538,7 +538,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
             {/* Instrument & Optics */}
             <div className="space-y-2 pt-2 border-t border-surface-border text-xs font-mono">
               <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider block">
-                Instrument & Bandpass
+                ── INSTRUMENT & BANDPASS ──
               </span>
               <div className="grid grid-cols-2 gap-1 text-[11px] bg-surface-elevated p-2.5 rounded border border-surface-border">
                 <span className="text-text-muted">Detector:</span>
@@ -557,7 +557,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
             {/* Photometric & Flux Readout */}
             <div className="space-y-2 pt-2 border-t border-surface-border text-xs font-mono">
               <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider block">
-                Photometry (MJy/sr)
+                ── PHOTOMETRY (MJy/sr) ──
               </span>
               <div className="space-y-1 bg-surface-elevated p-2.5 rounded border border-surface-border text-[11px]">
                 <div className="flex justify-between">
@@ -582,7 +582,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
             {/* Quality & Contamination Flags */}
             <div className="space-y-2 pt-2 border-t border-surface-border text-xs">
               <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider block">
-                Data Quality Flags
+                ── DATA QUALITY FLAGS ──
               </span>
               <div className="space-y-1.5 font-mono text-[11px]">
                 <div className="flex items-center justify-between p-1.5 rounded bg-surface-elevated border border-surface-border">
@@ -606,7 +606,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold text-primary uppercase tracking-wider flex items-center space-x-1">
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Candidate Target</span>
+                    <span>── CANDIDATE TARGET ──</span>
                   </span>
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-primary/10 text-primary border border-primary/30">
                     {selectedCandidate.confidence_score}% Conf
@@ -636,7 +636,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
                     className="w-full mt-2 py-1 px-2 rounded bg-surface-card border border-primary/40 hover:border-primary text-primary text-xs flex items-center justify-center space-x-1 transition-colors"
                   >
                     <BookmarkPlus className="w-3.5 h-3.5" />
-                    <span>Save Candidate Discovery</span>
+                    <span>[ ⚑ Save Candidate Discovery ]</span>
                   </button>
                 </div>
               </div>
@@ -649,7 +649,7 @@ export const SkyExplorer: React.FC<SkyExplorerProps> = ({
                 className="w-full py-2 px-3 rounded bg-surface-elevated border border-surface-border hover:border-scientific-success/50 text-xs font-mono text-scientific-success flex items-center justify-center space-x-1.5 transition-colors"
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Open 102-Band Spectral Analysis</span>
+                <span>[ Open 102-Band Spectral Analysis ]</span>
               </button>
             </div>
           </div>

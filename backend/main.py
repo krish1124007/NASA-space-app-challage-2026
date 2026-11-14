@@ -656,7 +656,7 @@ def get_unwise_xref(
 # ---------------------------------------------------------------------------
 # Frontend SPA & Static Assets Serving (SPHEREx Explorer UI)
 # ---------------------------------------------------------------------------
-FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "wiseview", "wv", "www", "static"))
 if os.path.exists(FRONTEND_DIST):
     assets_dir = os.path.join(FRONTEND_DIST, "assets")
     if os.path.exists(assets_dir):

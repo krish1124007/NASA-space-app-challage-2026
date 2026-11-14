@@ -104,7 +104,7 @@ export const App: React.FC = () => {
   const activeTargetName = targets.find((t) => t.id === currentTargetId)?.name;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0B1016] text-[#E6EDF3]">
+    <div className="min-h-screen flex flex-col bg-[#05080D] text-[#C9D1D9]">
       {/* Top Application Bar */}
       <TopNav
         currentTab={currentTab}

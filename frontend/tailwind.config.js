@@ -8,46 +8,56 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0B1016',
+        background: '#05080D',
         surface: {
-          DEFAULT: '#111923',
-          elevated: '#18232E',
-          card: '#131D28',
-          border: '#1F2D3D',
-          hover: '#1D2A37',
+          DEFAULT: '#0A0F17',
+          elevated: '#0E151F',
+          card: '#0E151F',
+          border: '#1B2533',
+          hover: '#15202B',
         },
         primary: {
-          DEFAULT: '#8CB7D8',
-          hover: '#A4C8E5',
-          dim: '#658FA’',
-          subtle: 'rgba(140, 183, 216, 0.12)',
+          DEFAULT: '#8AB4E0',
+          hover: '#A8C8E8',
+          dim: '#5B9BD5',
+          subtle: 'rgba(138, 180, 224, 0.12)',
         },
         secondary: {
-          DEFAULT: '#A6B6C4',
-          dim: '#7C8C9A',
+          DEFAULT: '#7D8A99',
+          dim: '#5A6875',
         },
         text: {
-          main: '#E6EDF3',
-          muted: '#8795A3',
+          main: '#C9D1D9',
+          muted: '#7D8A99',
           subtle: '#5A6875',
         },
         scientific: {
-          success: '#78B99A',
-          warning: '#E5A962',
-          danger: '#E06C75',
-          cyan: '#5EEAD4',
-          ice: '#A5F3FC',
+          success: '#4FE0C0',
+          warning: '#E0B04F',
+          danger: '#E05F5F',
+          cyan: '#4FE0C0',
+          ice: '#4FE0C0',
         }
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Consolas', 'Menlo', 'Monaco', 'monospace'],
+        sans: ['JetBrains Mono', 'IBM Plex Mono', 'Fira Code', 'Source Code Pro', 'ui-monospace', 'Menlo', 'Consolas', 'monospace'],
+        mono: ['JetBrains Mono', 'IBM Plex Mono', 'Fira Code', 'Source Code Pro', 'ui-monospace', 'Menlo', 'Consolas', 'monospace'],
       },
       fontSize: {
         '2xs': '0.65rem',
-      }
+      },
+      borderRadius: {
+        none: '0',
+        sm: '0',
+        DEFAULT: '0',
+        md: '0',
+        lg: '0',
+        xl: '0',
+        '2xl': '0',
+        '3xl': '0',
+        full: '0',
+      },
     },
   },
   plugins: [],
 }
-

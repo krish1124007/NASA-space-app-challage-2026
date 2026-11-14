@@ -77,7 +77,7 @@ export const HeaderModal: React.FC<HeaderModalProps> = ({ metadata, onClose }) =
 
         {/* Content Table */}
         <div className="p-4 overflow-y-auto flex-1 font-mono text-xs space-y-1">
-          <div className="bg-[#070B0E] p-4 rounded border border-surface-border space-y-1 overflow-x-auto text-[11px] leading-relaxed">
+          <div className="bg-[#05080D] p-4 rounded border border-surface-border space-y-1 overflow-x-auto text-[11px] leading-relaxed">
             {headerCards.map((c) => (
               <div key={c.key} className="flex">
                 <span className="w-24 font-bold text-primary flex-shrink-0">{c.key}</span>

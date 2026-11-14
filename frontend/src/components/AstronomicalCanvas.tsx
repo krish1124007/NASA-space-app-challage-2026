@@ -133,7 +133,7 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
     const height = canvas.height;
 
     // Clear background
-    ctx.fillStyle = '#070B0E';
+    ctx.fillStyle = '#05080D';
     ctx.fillRect(0, 0, width, height);
 
     ctx.save();
@@ -234,12 +234,12 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
       motionTracks.forEach((pt, idx) => {
         const px = (pt.x / 256) * imgSize - imgSize / 2;
         const py = (pt.y / 256) * imgSize - imgSize / 2;
-        ctx.fillStyle = idx === motionTracks.length - 1 ? '#5EEAD4' : '#8CB7D8';
+        ctx.fillStyle = idx === motionTracks.length - 1 ? '#4FE0C0' : '#8AB4E0';
         ctx.beginPath();
         ctx.arc(px, py, 3.5 / zoom, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = '#E6EDF3';
+        ctx.fillStyle = '#C9D1D9';
         ctx.font = `${Math.max(8, 9 / zoom)}px "JetBrains Mono", monospace`;
         ctx.fillText(pt.epoch, px + 5 / zoom, py - 4 / zoom);
       });
@@ -255,7 +255,7 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
         const cy = (cand.pixel_y / 256) * imgSize - imgSize / 2;
 
         const reticleRadius = (isSelected ? 16 : 12) / zoom;
-        const reticleColor = isSelected ? '#5EEAD4' : (cand.type === 'moving_object' ? '#8CB7D8' : '#E5A962');
+        const reticleColor = isSelected ? '#4FE0C0' : (cand.type === 'moving_object' ? '#8AB4E0' : '#E0B04F');
 
         ctx.strokeStyle = reticleColor;
         ctx.lineWidth = (isSelected ? 2 : 1.2) / zoom;
@@ -298,7 +298,7 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
 
         if (Math.abs(dx) <= imgSize / 2 + 20 && Math.abs(dy) <= imgSize / 2 + 20) {
           const r = 3.5 / zoom;
-          ctx.strokeStyle = '#78B99A'; // scientific green
+          ctx.strokeStyle = '#4FE0C0'; // scientific green
           ctx.lineWidth = 1.2 / zoom;
           // Diamond shape
           ctx.beginPath();
@@ -351,9 +351,9 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
     const compassY = height - 35;
     const armLen = 20;
 
-    ctx.strokeStyle = '#8CB7D8';
+    ctx.strokeStyle = '#8AB4E0';
     ctx.lineWidth = 1.5;
-    ctx.fillStyle = '#8CB7D8';
+    ctx.fillStyle = '#8AB4E0';
     ctx.font = '10px "JetBrains Mono", monospace';
 
     // North arrow (up)
@@ -525,7 +525,7 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
   return (
     <div 
       ref={containerRef} 
-      className={`relative w-full h-full bg-[#070B0E] overflow-hidden select-none border border-surface-border rounded-sm ${className}`}
+      className={`relative w-full h-full bg-[#05080D] overflow-hidden select-none border border-surface-border rounded-sm ${className}`}
     >
       <canvas
         ref={canvasRef}
@@ -540,7 +540,7 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
 
       {/* Floating Coordinate & Flux Cursor HUD */}
       {cursorWorld && cursorPos ? (
-        <div className="absolute top-3 left-3 bg-[#0B1016]/92 border border-surface-border backdrop-blur-md px-3.5 py-2 rounded text-[11px] font-mono text-secondary pointer-events-none shadow-xl flex flex-col space-y-1 z-10">
+        <div className="absolute top-3 left-3 bg-[#05080D]/92 border border-surface-border backdrop-blur-md px-3.5 py-2 rounded text-[11px] font-mono text-secondary pointer-events-none shadow-xl flex flex-col space-y-1 z-10">
           <div className="flex items-center space-x-3 text-text-main">
             <span>RA: <strong className="text-primary">{cursorWorld.raSex}</strong> ({cursorWorld.ra.toFixed(4)}°)</span>
             <span>DEC: <strong className="text-primary">{cursorWorld.decSex}</strong> ({cursorWorld.dec.toFixed(4)}°)</span>
@@ -552,7 +552,7 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
           </div>
         </div>
       ) : (
-        <div className="absolute top-3 left-3 bg-[#0B1016]/80 border border-surface-border backdrop-blur px-2.5 py-1 rounded text-[10px] font-mono text-text-muted pointer-events-none shadow flex items-center space-x-2 z-10">
+        <div className="absolute top-3 left-3 bg-[#05080D]/80 border border-surface-border backdrop-blur px-2.5 py-1 rounded text-[10px] font-mono text-text-muted pointer-events-none shadow flex items-center space-x-2 z-10">
           <span>Center: RA {centerRa.toFixed(4)}°, DEC {centerDec.toFixed(4)}°</span>
           <span>·</span>
           <span>FOV: {fovArcmin}′</span>
@@ -563,13 +563,13 @@ export const AstronomicalCanvas: React.FC<AstronomicalCanvasProps> = ({
 
       {/* Crosshair Top Right Badge (e.g. Epoch indicator) */}
       {crosshairLabel && (
-        <div className="absolute top-3 right-3 bg-[#0B1016]/85 border border-surface-border backdrop-blur px-3 py-1 rounded text-xs font-mono text-primary shadow">
+        <div className="absolute top-3 right-3 bg-[#05080D]/85 border border-surface-border backdrop-blur px-3 py-1 rounded text-xs font-mono text-primary shadow">
           {crosshairLabel}
         </div>
       )}
 
       {/* Controls Overlay Bottom-Right */}
-      <div className="absolute bottom-3 right-3 flex items-center space-x-1.5 bg-[#0B1016]/85 border border-surface-border backdrop-blur p-1 rounded text-text-muted shadow">
+      <div className="absolute bottom-3 right-3 flex items-center space-x-1.5 bg-[#05080D]/85 border border-surface-border backdrop-blur p-1 rounded text-text-muted shadow">
         <button
           onClick={() => setZoom((z) => Math.min(z * 1.25, 16.0))}
           title="Zoom In"
