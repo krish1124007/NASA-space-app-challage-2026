@@ -25,14 +25,21 @@ if WISEVIEW_DIR not in sys.path:
     sys.path.insert(0, WISEVIEW_DIR)
 
 try:
-    from wv import config as wv_config
-    from wv.common import spherex as wv_spherex
-    from wv.common import gaia as wv_gaia
+    from wiseview.wv import config as wv_config
+    from wiseview.wv.common import spherex as wv_spherex
+    from wiseview.wv.common import gaia as wv_gaia
     wv_config.ensure_dirs()
     HAS_WISEVIEW = True
-except Exception as e:
-    HAS_WISEVIEW = False
-    print(f"Warning: WiseView modules not loaded: {e}")
+except ImportError:
+    try:
+        from wv import config as wv_config
+        from wv.common import spherex as wv_spherex
+        from wv.common import gaia as wv_gaia
+        wv_config.ensure_dirs()
+        HAS_WISEVIEW = True
+    except Exception as e:
+        HAS_WISEVIEW = False
+        print(f"Warning: WiseView modules not loaded: {e}")
 
 from backend.catalog import PRECONFIGURED_TARGETS, DETECTOR_RANGES, SPECTRAL_CHANNELS, SPECTRAL_FEATURES, get_detector_for_channel, get_channel_wavelength
 from backend.astrometry import (
@@ -634,7 +641,10 @@ def get_unwise_xref(
 ):
     """unWISE / Zooniverse subject crossmatch for a position."""
     try:
-        from wv.common import xref as wv_xref
+        try:
+            from wiseview.wv.common import xref as wv_xref
+        except ImportError:
+            from wv.common import xref as wv_xref
         if wv_xref.xref is None:
             return {"ids": [], "note": "unWISE cross-match index not installed"}
         subs = wv_xref.xref.get_subjects_by_coordinates(ra, dec)

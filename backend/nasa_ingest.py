@@ -136,7 +136,10 @@ def query_gaia_crossmatch(ra: float, dec: float, radius_arcmin: float = 6.0) -> 
         wv_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "wiseview"))
         if wv_dir not in sys.path:
             sys.path.insert(0, wv_dir)
-        from wv.common import gaia as wv_gaia
+        try:
+            from wiseview.wv.common import gaia as wv_gaia
+        except ImportError:
+            from wv.common import gaia as wv_gaia
         gaia_res = wv_gaia.cone(ra, dec, radius_arcmin / 60.0)
         sources = gaia_res.get("sources", [])
         if sources:
