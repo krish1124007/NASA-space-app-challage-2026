@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiseView Classic — Explore the changing universe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='flash3-home.css') }}?v={{ config.get('ASSET_VERSION', '1') }}">
+  </head>
+  <body class="home-page">
+
+    <header class="home-topbar">
+      <a class="brand" href="/legacy" aria-label="WiseView Classic overview">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <circle cx="12" cy="12" r="3.2"></circle>
+            <path d="M3.5 3.5 8.2 8.2M20.5 3.5 15.8 8.2M3.5 20.5 8.2 15.8M20.5 20.5 15.8 15.8"></path>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">WISEVIEW <span class="brand-tag">CLASSIC</span></span>
+          <span class="brand-sub">NASA All-Sky Infrared Time Domain</span>
+        </span>
+      </a>
+
+      <nav class="home-nav" aria-label="Primary">
+        <a class="nav-link is-active" href="/legacy">Overview</a>
+        <a class="nav-link" href="/legacy/viewer">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7v5l3.2 2"></path>
+          </svg>
+          Time Machine (WiseView)
+        </a>
+        <a class="nav-link" href="#about">About WISEVIEW</a>
+      </nav>
+
+      <div class="topbar-right">
+        <a class="target-chip" href="{{ (targets | selectattr('id', 'equalto', 'wise_0855') | first).href_time_machine if targets | selectattr('id', 'equalto', 'wise_0855') | list else '/legacy/viewer' }}">
+          <span class="chip-key">Target:</span>
+          <span class="chip-value">WISE 0855-0714</span>
+          <svg class="chip-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m9 6 6 6-6 6"></path>
+          </svg>
+        </a>
+        <a class="nasa-link" href="https://irsa.ipac.caltech.edu/" target="_blank" rel="noopener">
+          <span class="nasa-dot" aria-hidden="true"></span>NASA / IRSA
+        </a>
+      </div>
+    </header>
+
+    <main class="home-main">
+
+      <section class="hero" aria-labelledby="hero-title">
+        <span class="hero-badge">
+          <span class="hero-badge-dot" aria-hidden="true"></span>
+          NASA SPHEREx / WISE Sky Survey &middot; Public Science Workspace
+        </span>
+
+        <h1 id="hero-title" class="hero-title">Explore the changing universe.</h1>
+
+        <p class="hero-copy">
+          Welcome to WiseView Classic &mdash; the temporal viewer for NASA's all-sky infrared
+          survey data. Blink multi-epoch SPHEREx and unWISE cutouts, track high-proper-motion
+          stars, uncover sub-stellar brown dwarfs, detect fast-moving Near-Earth Asteroids,
+          and trace biogenic water and ice across 102 spectral bands.
+        </p>
+
+        <form id="sky-search" class="sky-search" autocomplete="off" novalidate>
+          <span class="search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-3.4-3.4"></path>
+            </svg>
+          </span>
+          <input
+            id="sky-search-input"
+            class="search-input"
+            type="text"
+            spellcheck="false"
+            aria-label="Right ascension and declination, or a target name"
+            placeholder="Enter coordinates (e.g. 08h 55m 10.8s, -07&deg; 14&prime; 42&Prime; or 133.795, -7.245) or a target name&hellip;"
+          >
+          <button class="search-submit" type="submit">
+            <span>Explore</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h13M12 5l7 7-7 7"></path>
+            </svg>
+          </button>
+        </form>
+
+        <p id="sky-search-error" class="search-error" role="alert" hidden></p>
+
+        <div class="quick-tests">
+          <span class="quick-label">Quick tests:</span>
+          <button type="button" class="quick-link" data-fill="08h 55m 10.831s, -07&deg; 14&prime; 42.53&Prime;">WISE 0855 (Sexagesimal)</button>
+          <span class="quick-sep" aria-hidden="true">&middot;</span>
+          <button type="button" class="quick-link" data-fill="269.45208 4.69339">Barnard's Star (Decimal)</button>
+          <span class="quick-sep" aria-hidden="true">&middot;</span>
+          <button type="button" class="quick-link" data-fill="RW Aurigae">RW Aurigae</button>
+        </div>
+
+        <div class="hero-actions">
+          <a class="action-btn" href="/legacy/viewer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m3 21 8.5-8.5"></path>
+              <path d="M14 4h6v6"></path>
+              <path d="M20 4 10.5 13.5"></path>
+            </svg>
+            Launch Sky Explorer
+          </a>
+          <a class="action-btn" href="/legacy/viewer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 7v5l3.2 2"></path>
+            </svg>
+            Temporal Time Machine
+          </a>
+          <a class="action-btn accent" href="#featured">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m12 3 8.5 4.5L12 12 3.5 7.5 12 3Z"></path>
+              <path d="m3.5 12 8.5 4.5 8.5-4.5"></path>
+              <path d="m3.5 16.5 8.5 4.5 8.5-4.5"></path>
+            </svg>
+            Benchmark Targets
+          </a>
+        </div>
+      </section>
+
+      <section id="featured" class="featured" aria-labelledby="featured-title">
+        <div class="section-head">
+          <div>
+            <h2 id="featured-title">Featured Scientific Targets</h2>
+            <p>Preconfigured astronomical benchmark sources demonstrating extreme proper motion and photometric variability.</p>
+          </div>
+          <span class="section-meta">{{ targets | length }} Benchmark Targets Loaded &middot; 1 Custom Field</span>
+        </div>
+
+        <div class="target-grid">
+          {% for t in targets %}
+          <article class="target-card">
+            <div class="card-head">
+              <div class="card-ident">
+                <h3>{{ t.name }}</h3>
+                <p class="card-class">{{ t.classification }}</p>
+              </div>
+              <span class="badge badge-{{ t.category }}">{{ t.badge }}</span>
+            </div>
+
+            <p class="card-desc">{{ t.description }}</p>
+
+            <div class="card-metrics">
+              <div class="metric"><span class="metric-key">RA (J2000):</span><span class="metric-value">{{ t.ra_sexagesimal }}</span></div>
+              <div class="metric"><span class="metric-key">DEC (J2000):</span><span class="metric-value">{{ t.dec_sexagesimal }}</span></div>
+              {% if t.category == 'moving' %}
+              <div class="metric"><span class="metric-key">Proper Motion:</span><span class="metric-value metric-accent">{{ t.pm_total }}&Prime;/yr</span></div>
+              {% else %}
+              <div class="metric"><span class="metric-key">Amplitude Var:</span><span class="metric-value metric-accent">&Delta;m &gt; 2.5 mag</span></div>
+              {% endif %}
+              <div class="metric"><span class="metric-key">Epochs Available:</span><span class="metric-value">{{ t.epoch_count }} survey epochs</span></div>
+            </div>
+
+            <div class="card-actions">
+              <a class="card-btn" href="{{ t.href_explorer }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m3 21 8.5-8.5"></path>
+                  <path d="M14 4h6v6"></path>
+                  <path d="M20 4 10.5 13.5"></path>
+                </svg>
+                Sky Explorer
+              </a>
+              <a class="card-btn" href="{{ t.href_time_machine }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M12 7v5l3.2 2"></path>
+                </svg>
+                Time Machine
+              </a>
+              <a class="card-btn" href="{{ t.href_spectrum }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 3v18h18"></path>
+                  <path d="M7 14l3-3 3 2 4-5"></path>
+                </svg>
+                Spectrum
+              </a>
+            </div>
+          </article>
+          {% endfor %}
+
+          <article class="target-card custom">
+            <div class="card-head">
+              <div class="card-ident">
+                <h3>Custom Sky Field</h3>
+                <p class="card-class">Arbitrary Coordinates / FITS</p>
+              </div>
+              <span class="badge badge-custom">User Defined</span>
+            </div>
+
+            <p class="card-desc">
+              Explore any right ascension and declination across the sphere, or upload custom
+              FITS cutouts directly from NASA IRSA, WISE, or ESA Gaia.
+            </p>
+
+            <div class="card-metrics">
+              <div class="metric"><span class="metric-key">Coordinate System:</span><span class="metric-value">ICRS J2000 / Galactic</span></div>
+              <div class="metric"><span class="metric-key">Archive Mode:</span><span class="metric-value">Live IRSA / Local</span></div>
+              <div class="metric"><span class="metric-key">Supported Formats:</span><span class="metric-value metric-accent">.fits / .fit / SIA2</span></div>
+              <div class="metric"><span class="metric-key">Survey Epochs:</span><span class="metric-value">All-Sky 2025&ndash;2027</span></div>
+            </div>
+
+            <div class="card-actions single">
+              <a class="card-btn primary" href="/legacy/viewer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M12 8v8M8 12h8"></path>
+                </svg>
+                Open Custom Sky Field
+              </a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="telemetry" aria-label="Survey information">
+        <div class="telemetry-card">
+          <div class="telemetry-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <ellipse cx="12" cy="6" rx="8" ry="3"></ellipse>
+              <path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"></path>
+              <path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path>
+            </svg>
+            <h3>SPHEREx Data Releases</h3>
+          </div>
+          <p>
+            Data Release products provide all-sky calibrated spectrophotometric cubes across
+            0.75&nbsp;&micro;m to 5.0&nbsp;&micro;m with ~6.2&Prime; angular resolution.
+          </p>
+          <div class="telemetry-foot">
+            <div><span>Spectral Bands:</span><span class="telemetry-value">102 channels (D1&ndash;D6)</span></div>
+            <div><span>Aperture:</span><span class="telemetry-value">20 cm Schmidt telescope</span></div>
+          </div>
+        </div>
+
+        <div class="telemetry-card">
+          <div class="telemetry-head cyan">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 7v5l3.2 2"></path>
+            </svg>
+            <h3>Epoch Cadence</h3>
+          </div>
+          <p>
+            SPHEREx covers the entire sky every six months in a Sun-synchronous orbit,
+            producing four complete survey epochs optimized for temporal difference imaging.
+          </p>
+          <div class="telemetry-foot">
+            <div><span>Survey Period:</span><span class="telemetry-value">2025 &ndash; 2027</span></div>
+            <div><span>Sky Coverage:</span><span class="telemetry-value success">100% All-Sky Complete</span></div>
+          </div>
+        </div>
+
+        <div class="telemetry-card">
+          <div class="telemetry-head success">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="m8.5 12.2 2.4 2.4 4.6-4.8"></path>
+            </svg>
+            <h3>Citizen Science Pipeline</h3>
+          </div>
+          <p>
+            Contribute to minor planet recovery, high proper motion discovery, and
+            protostellar variability tracking. Flagged candidates keep precise astrometric
+            WCS coordinates.
+          </p>
+          <div class="telemetry-foot links">
+            <a href="/legacy/viewer">Open the viewer</a>
+            <a href="https://www.zooniverse.org/projects/backyardworlds" target="_blank" rel="noopener">Backyard Worlds</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="about" class="about-note">
+        <h2>About WiseView</h2>
+        <p>
+          WiseView is a data viewer operated by the
+          <a href="https://www.amnh.org/" target="_blank" rel="noopener">American Museum of Natural History</a>.
+          It blinks multi-epoch infrared cutouts; there is no model inference and no training
+          pipeline. SPHEREx mode reads Level 2 spectral images from
+          <a href="https://irsa.ipac.caltech.edu/" target="_blank" rel="noopener">IRSA</a>
+          (D1&ndash;D6), unWISE mode reads W1/W2 coadds from
+          <a href="http://unwise.me" target="_blank" rel="noopener">unWISE</a>.
+        </p>
+      </section>
+    </main>
+
+    <footer class="home-footer">
+      <span>WiseView Classic &middot; using the original flash3 control surface</span>
+      <span>Designed for Chrome</span>
+    </footer>
+
+    <script id="wv-home-data" type="application/json">{{ {"targets": targets, "viewer": viewer_url} | tojson }}</script>
+    <script src="{{ url_for('static', filename='flash3-home.js') }}?v={{ config.get('ASSET_VERSION', '1') }}"></script>
+  </body>
+</html>

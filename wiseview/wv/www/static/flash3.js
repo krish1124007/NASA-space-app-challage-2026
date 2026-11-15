@@ -45,6 +45,15 @@ function mjd_to_aarondate (mjd) {
     return d.getFullYear()+"."+(d.getMonth()/12.0).toFixed(1).substring(2)
 }
 
+// Human-readable month + year, used by the frame date readout and rail titles.
+var MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+		   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function mjd_to_readable_date (mjd) {
+    var d = new Date(-3506716800000+(mjd*86400000));
+    return MONTH_NAMES[d.getMonth()]+" "+d.getFullYear();
+}
+
 
 function Memoizer (size) {
     this.size = size;
@@ -181,6 +190,7 @@ function WiseSwapper () {
     this.instrument_input = jQuery("#instrumentInput");
     this.detector_input = jQuery("#detectorInput");
     this.wavelength_input = jQuery("#wavelengthInput");
+    this.limit_input = jQuery("#limitInput");
 
     // Make Stretch (linear) slider
     this.linear_input = jQuery("#linearInput");
@@ -267,14 +277,27 @@ function WiseSwapper () {
 	}
     });
 
-    // Largest zoom that keeps the canvas inside the viewport.
+    // Largest zoom that keeps the canvas plus the Pan-STARRS strip inside the
+    // center stage. Measured from the stage itself so the two side panels are
+    // accounted for at any viewport width.
     this.fit_zoom = function (img_w, img_h) {
 	if (!img_w || !img_h) { return 1.0; }
-	var nav_w = jQuery("#nav-left").outerWidth() || 280,
-	    legend_w = jQuery("#epoch-legend").outerWidth() || 20,
-	    avail_w = Math.max(200, jQuery(window).width() - nav_w - legend_w - 20),
-	    avail_h = Math.max(200, jQuery(window).height() - 60);
-	return Math.max(0.1, Math.min(20.0, Math.min(avail_w / img_w, avail_h / img_h)));
+	var stage = jQuery("#stage-body"),
+	    legend_w = jQuery("#epoch-legend").outerWidth() || 24,
+	    stage_w = stage.width(),
+	    stage_h = stage.height();
+	// Fall back to the window before the grid has been laid out.
+	if (!stage_w || !stage_h) {
+	    stage_w = jQuery(window).width() - 700;
+	    stage_h = jQuery(window).height() - 60;
+	}
+	var avail_w = Math.max(200, stage_w - legend_w - 44),
+	    // The optical strip is a second square below the canvas.
+	    avail_h = Math.max(200, stage_h - 64),
+	    strip_h = Math.max(img_w, img_h) + 12,
+	    zoom_w = avail_w / img_w,
+	    zoom_h = avail_h / (img_h + strip_h);
+	return Math.max(0.1, Math.min(20.0, Math.min(zoom_w, zoom_h)));
     };
 
     // Zoom so the rendered frame fills the available screen area exactly.
@@ -355,6 +378,7 @@ function WiseSwapper () {
 	    instrument: this.instrument,
 	    detector: this.detector_input.val(),
 	    wavelength: this.wavelength_input.val(),
+	    limit: this.limit_input.val() || "",
 	    speed: this.speed_input.slider("option","value"),
 	    minbright: symexp10(this.trimbright.low()).toFixed(4),
 	    maxbright: symexp10(this.trimbright.high()).toFixed(4),
@@ -404,6 +428,13 @@ function WiseSwapper () {
 	jQuery("#bandRow").toggle(!spherex);
 	jQuery("#spherexRow").toggle(spherex);
 	jQuery("#spherexHint").toggle(spherex);
+	jQuery("#limitRow").toggle(spherex);
+	// unWISE-only controls stay in the DOM (URL state is preserved) but are
+	// dimmed while SPHEREx data is selected. Groups are left open so the
+	// control set stays discoverable.
+	var $unwise = jQuery("#unwiseOnlyGroup");
+	$unwise.toggleClass("mode-inactive", spherex);
+	jQuery("#mode-indicator").text(spherex ? "SPHEREx mode" : "unWISE mode");
 	if (spherex) {
 	    var det = this.detector_input.val() || "D2",
 		ranges = WV.detectorRanges || {},
@@ -753,6 +784,7 @@ function WiseSwapper () {
 	this.reset_locals();
         this.cur_img = NaN;
         jQuery("#pawnstars").empty();
+	jQuery("#frame-nav").empty().removeData("count");
 	// Clean inputs
 	// TODO
     };
@@ -768,12 +800,58 @@ function WiseSwapper () {
         } else {
 	    this.cur_img = (this.cur_img + 1) % this.images.length;
         }
+	this.display_frame();
+    };
 
+    // Jump straight to a rendered frame (used by the frame rail).
+    this.set_frame = function (idx) {
+	if (!this.images.length || isNaN(idx)) { return; }
+	this.cur_img = Math.max(0, Math.min(this.images.length - 1, idx));
+	this.display_frame();
+	this.draw();
+	// Restart the blink countdown so the selected frame gets a full interval.
+	this.updateSpeed();
+    };
+
+    // Build/update the clickable frame rail beside the canvas.
+    this.render_frame_nav = function () {
+	var nav = jQuery("#frame-nav"),
+	    n = this.images.length;
+	if (!nav.length) { return; }
+	if (nav.data("count") !== n) {
+	    nav.empty();
+	    for (var i = 0; i < n; i++) {
+		var chip = jQuery("<button/>", {
+		    type: "button",
+		    "class": "frame-chip",
+		    "data-frame": i
+		});
+		jQuery("<span/>", {"class": "frame-mark"}).appendTo(chip);
+		jQuery("<span/>", {"class": "frame-num"})
+		    .text(("0"+(i+1)).slice(-2)).appendTo(chip);
+		nav.append(chip);
+	    }
+	    nav.data("count", n);
+	}
+	var legend = this.epoch_legend[this.cur_img] || "";
+	nav.children(".frame-chip").each(function (i) {
+	    var chip = jQuery(this),
+		mark = legend.charAt(i) || "\u00b7",
+		date = that.versions[i] || "";
+	    chip.find(".frame-mark").text(mark);
+	    chip.attr("title", "Frame "+(i+1)+" / "+n+(date ? " \u00b7 "+date : ""));
+	    chip.toggleClass("active", i === that.cur_img);
+	});
+    };
+
+    // Refresh everything that depends on the current frame index.
+    this.display_frame = function () {
+	if (isNaN(this.cur_img)) { return; }
 	// Update epoch labels at the top
         this.ver_output.text(this.versions[this.cur_img]);
 
-	// Update epoch legend at the side
-	jQuery("#epoch-legend").text(this.epoch_legend[this.cur_img]);
+	// Update the clickable frame rail at the side
+	this.render_frame_nav();
 
 	// Draw border for epoch 0 if option set
         if (!this.border_input.prop("checked")) {
@@ -1095,6 +1173,7 @@ function WiseSwapper () {
 		
 		that.updateMjds();
 		that.updateEpochs();
+		that.render_frame_nav();
 		that.updateZoom();
 		if (that.pending_fit) {
 		    that.fit_to_screen();
@@ -1135,11 +1214,15 @@ function WiseSwapper () {
 	var versions = [];
 	
 	// For each frame, find lowest and highest mjd, and convert to
-	// a string for the UI
+	// a human-readable month/year string for the UI
 	for (var i = 0; i < this.window_mjds.length; i++) {
 	    var low = Math.min(...this.window_mjds[i]),
-		high = Math.max(...this.window_mjds[i]);
-	    versions.push(mjd_to_aarondate(low)+" - "+mjd_to_aarondate(high))
+		high = Math.max(...this.window_mjds[i]),
+		low_label = mjd_to_readable_date(low),
+		high_label = mjd_to_readable_date(high);
+	    versions.push(low_label === high_label
+			  ? low_label
+			  : low_label+" - "+high_label);
 	}
 
 	this.versions = versions;
@@ -1361,10 +1444,25 @@ function WiseSwapper () {
     };
     
     this.tabClick = function(evt) {
+	var id = evt.target.id;
 	jQuery("#tabs button").addClass("inactive");
-	jQuery("#"+evt.target.id).removeClass("inactive");
+	jQuery("#"+id).removeClass("inactive");
 	jQuery(".tabBody").hide();
-	jQuery("#"+evt.target.id+"Div").show();
+
+	if (id === "tabSettings") {
+	    // Settings is split across the left and right panels.
+	    jQuery("#tabSettingsDiv").show();
+	    jQuery("#tabSettingsRight").show();
+	    jQuery("#info-overlay").hide();
+	    jQuery("#workspace").removeClass("info-open");
+	    if (this.pending_fit) {
+		this.fit_to_screen();
+	    }
+	} else {
+	    jQuery("#"+id+"Div").show();
+	    jQuery("#info-overlay").show();
+	    jQuery("#workspace").addClass("info-open");
+	}
     };
 
     this.showhide_diff = function(evt) {
@@ -1471,6 +1569,10 @@ jQuery(function () {
     jQuery("#overlayCanvas").on("mouseup", ws.move_up.bind(ws));
     jQuery("#overlayCanvas").on("mousedown", ws.move_down.bind(ws));
     jQuery("#overlayCanvas").on("mousemove", ws.move_move.bind(ws));
+    jQuery("#frame-nav").on("click", ".frame-chip", function (evt) {
+	evt.preventDefault();
+	ws.set_frame(Number(jQuery(this).attr("data-frame")));
+    });
     jQuery(".urlers").on("change", ws.updateUrl.bind(ws));
     jQuery(".resetters").on("change", ws.restart.bind(ws));
     jQuery("#linearInput").on("slidestop", ws.restart.bind(ws));

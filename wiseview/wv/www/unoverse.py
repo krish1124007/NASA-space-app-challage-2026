@@ -1,3 +1,10 @@
+import os
+import sys
+
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 from io import BytesIO, StringIO
 import csv
 import os
@@ -27,6 +34,15 @@ import astropy.io.fits as aif
 from wv import config
 from wv.common import gaia as gaia_mod
 from wv.common import spherex as spherex_mod
+try:
+    from wv.www import targets as target_mod
+except Exception:
+    import os
+    import sys
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+    if _HERE not in sys.path:
+        sys.path.insert(0, _HERE)
+    import targets as target_mod  # type: ignore
 
 # unWISE support is optional. It needs index files that are not part of a fresh
 # checkout, so import failures must not stop the SPHEREx/Gaia mode from running.
@@ -64,10 +80,11 @@ try:
     from backend.spherex_service import (
         synthesize_astronomical_image,
         compute_difference_image,
+        render_fits_to_png_base64,
         extract_candidates_from_epochs,
         DISCOVERY_REGISTRY
     )
-    from backend.astrometry import parse_astronomical_coordinates
+    from backend.astrometry import parse_astronomical_coordinates, create_synthetic_wcs
     from backend.spectrum_service import generate_spectrum_for_target
     from backend.nasa_ingest import query_gaia_crossmatch
     HAS_EXPLORER_BACKEND = True
@@ -76,12 +93,7 @@ except Exception as e:
     print(f"Warning: SPHEREx Explorer backend routes not loaded in Flask: {e}")
 
 # Bump to invalidate browser-cached static assets after frontend changes.
-app.config["ASSET_VERSION"] = os.environ.get("WV_ASSET_VERSION", "2026.11.14.4")
-
-# Serialize first-time SPHEREx downloads so two browser tabs do not fetch the
-# same cutouts twice.
-_spherex_lock = threading.Lock()
-
+app.config["ASSET_VERSION"] = os.environ.get("WV_ASSET_VERSION", "2026.11.15.8")
 
 def _json_error(message, status=500):
     return jsonify({"error": message}), status
@@ -151,7 +163,32 @@ api.add_resource(SearchV3_Page, "/", "/wiseview-v3", "/wiseview-v2", "/wiseview"
 
 @app.get("/legacy")
 def legacy_page():
-    """Access classic WiseView flash3 interface if requested."""
+    """Landing page for the classic WiseView UI.
+
+    ``/legacy?viewer=1`` keeps old bookmarks working after the homepage took
+    over this route.
+    """
+    if request.args.get("viewer") in ("1", "true", "True"):
+        return make_response(render_template("flash3.html"))
+    try:
+        targets = target_mod.get_targets()
+    except Exception as exc:  # pragma: no cover - catalogue should be static
+        app.logger.error("Target catalogue unavailable: %s", exc)
+        targets = []
+    return make_response(render_template(
+        "flash3_home.html",
+        targets=targets,
+        viewer_url=target_mod.VIEWER_PATH,
+    ))
+
+@app.get("/legacy/spectrum")
+def legacy_spectrum_page():
+    return make_response(render_template("flash3_spectrum.html"))
+
+
+@app.get("/legacy/viewer")
+def legacy_viewer():
+    """Classic WiseView flash3 control surface."""
     return make_response(render_template("flash3.html"))
 
 
@@ -223,6 +260,19 @@ def api_search():
     })
 
 
+# Fallback epochs used when a custom position (no catalog entry) is requested.
+_DEFAULT_EPOCHS = [
+    {"epoch_id": "EP-2025A", "obs_date": "2025-04-10T12:00:00Z", "mjd": 60775.5,
+     "delta_pos_arcsec": [0.0, 0.0], "flux_mjy": 14.5, "quality_flag": 0},
+    {"epoch_id": "EP-2025B", "obs_date": "2025-07-25T16:30:00Z", "mjd": 60881.6,
+     "delta_pos_arcsec": [0.0, 0.0], "flux_mjy": 14.2, "quality_flag": 0},
+    {"epoch_id": "EP-2025C", "obs_date": "2025-11-12T08:15:00Z", "mjd": 60991.3,
+     "delta_pos_arcsec": [0.0, 0.0], "flux_mjy": 14.7, "quality_flag": 0},
+    {"epoch_id": "EP-2026A", "obs_date": "2026-02-27T22:45:00Z", "mjd": 61098.9,
+     "delta_pos_arcsec": [0.0, 0.0], "flux_mjy": 14.4, "quality_flag": 0},
+]
+
+
 @app.get("/api/observations")
 def api_observations():
     if not HAS_EXPLORER_BACKEND:
@@ -235,45 +285,60 @@ def api_observations():
     stretch = request.args.get("stretch", "asinh")
     colormap = request.args.get("colormap", "grayscale")
 
-    if target_id and target_id in PRECONFIGURED_TARGETS:
-        t = PRECONFIGURED_TARGETS[target_id]
-        target_name = t["name"]
-        center_ra = t["coordinates"]["ra_deg"]
-        center_dec = t["coordinates"]["dec_deg"]
-        pm_ra = t["proper_motion"]["pm_ra_mas_yr"]
-        pm_dec = t["proper_motion"]["pm_dec_mas_yr"]
-        parallax = t["proper_motion"]["parallax_mas"]
-        is_var = (t["category"] == "variable")
+    target = PRECONFIGURED_TARGETS.get(target_id) if target_id else None
+    if target:
+        target_name = target["name"]
+        center_ra = target["coordinates"]["ra_deg"]
+        center_dec = target["coordinates"]["dec_deg"]
+        epochs_meta = target.get("epochs") or _DEFAULT_EPOCHS
     else:
         target_name = "Custom Target"
         center_ra = float(ra or 0.0)
         center_dec = float(dec or 0.0)
-        pm_ra, pm_dec, parallax, is_var = 0.0, 0.0, 0.0, False
+        epochs_meta = _DEFAULT_EPOCHS
 
-    epochs_meta = [
-        {"epoch_id": "EP-2025A", "obs_date": "2025-04-12T08:30:00Z", "dt_years": 0.00},
-        {"epoch_id": "EP-2025B", "obs_date": "2025-07-28T14:15:00Z", "dt_years": 0.29},
-        {"epoch_id": "EP-2025C", "obs_date": "2025-11-15T20:45:00Z", "dt_years": 0.59},
-        {"epoch_id": "EP-2026A", "obs_date": "2026-03-01T11:00:00Z", "dt_years": 0.88},
-    ]
-
+    npix = 256
     obs_list = []
-    for ep in epochs_meta:
-        res = synthesize_astronomical_image(
-            center_ra, center_dec, channel, fov_arcmin,
-            ep["dt_years"], pm_ra, pm_dec, parallax, is_var,
-            stretch, colormap, 0
+    raw_epochs_for_detection = []
+    for idx, ep in enumerate(epochs_meta):
+        img_arr, _wcs, meta = synthesize_astronomical_image(
+            ra_center=center_ra,
+            dec_center=center_dec,
+            fov_arcmin=fov_arcmin,
+            epoch_idx=idx,
+            total_epochs=len(epochs_meta),
+            target_id=target_id,
+            channel=channel,
+            npix=npix,
         )
         obs_list.append({
-            "epoch_id": ep["epoch_id"],
-            "obs_date": ep["obs_date"],
+            "epoch_index": idx,
+            "epoch_id": ep.get("epoch_id"),
+            "obs_date": ep.get("obs_date"),
+            "mjd": ep.get("mjd"),
             "channel": channel,
             "fov_arcmin": fov_arcmin,
-            "image_url": res["image_data_uri"],
-            "metadata": res["metadata"],
+            "flux_mjy": ep.get("flux_mjy"),
+            "quality_flag": ep.get("quality_flag", 0),
+            "image_url": render_fits_to_png_base64(
+                img_arr, stretch=stretch, colormap=colormap,
+            ),
+            "metadata": meta,
+        })
+        raw_epochs_for_detection.append({
+            "epoch_id": ep.get("epoch_id"),
+            "image_array": img_arr,
         })
 
-    candidates = extract_candidates_from_epochs(target_name, center_ra, center_dec, obs_list)
+    try:
+        ref_wcs = create_synthetic_wcs(center_ra, center_dec, fov_arcmin, npix)
+        candidates = extract_candidates_from_epochs(
+            raw_epochs_for_detection, ref_wcs, fov_arcmin,
+        )
+    except Exception:
+        traceback.print_exc()
+        candidates = []
+
     return jsonify({
         "target_name": target_name,
         "ra_deg": center_ra,
@@ -290,13 +355,50 @@ def api_observations():
 def api_difference():
     if not HAS_EXPLORER_BACKEND:
         return _json_error("Difference engine unavailable", 503)
-    target_id = request.args.get("target_id", "wise_0855")
+    target_id = request.args.get("target_id") or None
     e1_idx = int(request.args.get("epoch1", 0))
     e2_idx = int(request.args.get("epoch2", 3))
     ch = int(request.args.get("channel", 12))
     fov = float(request.args.get("fov_arcmin", 10.0))
-    res = compute_difference_image(target_id, e1_idx, e2_idx, ch, fov)
-    return jsonify(res)
+    stretch = request.args.get("stretch", "linear")
+
+    target = PRECONFIGURED_TARGETS.get(target_id) if target_id else None
+    if target:
+        ra = target["coordinates"]["ra_deg"]
+        dec = target["coordinates"]["dec_deg"]
+    else:
+        ra = float(request.args.get("ra") or 0.0)
+        dec = float(request.args.get("dec") or 0.0)
+
+    npix = 256
+    img1, _w1, _m1 = synthesize_astronomical_image(
+        ra, dec, fov, e1_idx, 4, target_id, ch, npix,
+    )
+    img2, _w2, _m2 = synthesize_astronomical_image(
+        ra, dec, fov, e2_idx, 4, target_id, ch, npix,
+    )
+    diff = compute_difference_image(img1, img2)
+
+    diff_rms = float(np.std(diff))
+    diff_max = float(np.max(diff))
+    diff_min = float(np.min(diff))
+    limit = max(abs(diff_min), abs(diff_max), 1e-4)
+    norm_diff = (diff / (2.0 * limit)) + 0.5
+
+    return jsonify({
+        "epoch1_index": e1_idx,
+        "epoch2_index": e2_idx,
+        "difference_image_url": render_fits_to_png_base64(
+            norm_diff, stretch=stretch, vmin=0.0, vmax=1.0,
+            colormap="difference",
+        ),
+        "stats": {
+            "rms_noise": round(diff_rms, 4),
+            "max_positive_residual": round(diff_max, 4),
+            "min_negative_residual": round(diff_min, 4),
+            "snr_peak": round(diff_max / max(1e-4, diff_rms), 2),
+        },
+    })
 
 
 @app.get("/api/spectrum")
@@ -309,6 +411,23 @@ def api_spectrum():
     ra_val = float(ra) if ra else None
     dec_val = float(dec) if dec else None
     return jsonify(generate_spectrum_for_target(target_id, ra_val, dec_val))
+
+
+@app.get("/api/spectrum/real")
+def api_spectrum_real():
+    ra = request.args.get("ra")
+    dec = request.args.get("dec")
+    if ra is None or dec is None:
+        return _json_error("ra and dec are required", 400)
+    try:
+        ra_val = float(ra)
+        dec_val = float(dec)
+    except ValueError:
+        return _json_error("ra and dec must be numbers", 400)
+    try:
+        return jsonify(spherex_mod.cached_real_spectrum(ra_val, dec_val))
+    except Exception as exc:
+        return _json_error(f"Real spectrum extraction failed: {exc}", 502)
 
 
 @app.get("/api/crossmatch/gaia")
@@ -510,14 +629,23 @@ def spherex_frames():
     invert = request.args.get("invert", "0") in ("1", "true", "True")
     out_pixels = int(request.args.get("pixels", config.SPHEREX_FRAME_PIXELS))
 
+    # Runtime frame count. Omit for the configured default; values are clamped
+    # in spherex.prepare_visits().
+    limit_arg = request.args.get("limit")
+    limit = None
+    if limit_arg not in (None, "", "null"):
+        try:
+            limit = int(float(limit_arg))
+        except ValueError:
+            return _json_error("limit must be an integer", 400)
+
     try:
-        with _spherex_lock:
-            meta = spherex_mod.build_frames(
-                ra, dec, detector=detector, wavelength=wavelength,
-                size_deg=size_deg, out_pixels=out_pixels,
-                stretch=stretch, invert=invert,
-                collection=request.args.get("collection") or config.SPHEREX_COLLECTION,
-            )
+        meta = spherex_mod.build_frames(
+            ra, dec, detector=detector, wavelength=wavelength,
+            size_deg=size_deg, out_pixels=out_pixels,
+            limit=limit, stretch=stretch, invert=invert,
+            collection=request.args.get("collection") or config.SPHEREX_COLLECTION,
+        )
     except LookupError as exc:
         return _json_error(str(exc), 404)
     except Exception as exc:

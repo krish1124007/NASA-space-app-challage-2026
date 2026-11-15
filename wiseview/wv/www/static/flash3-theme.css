@@ -1,4 +1,12 @@
-/* WiseView legacy UI — dark terminal / ASCII theme */
+/* WiseView legacy UI — dark terminal / ASCII theme
+ *
+ * Layout: fixed top bar + three-column workspace.
+ *   left  = target / instrument / playback controls
+ *   center = epoch legend + canvases + Pan-STARRS strip
+ *   right = stretch + advanced controls (grouped by data mode)
+ * Every control keeps its original element id so flash3.js wiring is unchanged.
+ */
+
 html, body {
     margin: 0;
     padding: 0;
@@ -8,11 +16,18 @@ html, body {
     font-family: 'JetBrains Mono', 'IBM Plex Mono', 'Fira Code', 'Source Code Pro', ui-monospace, Menlo, Consolas, monospace;
     font-size: 12px;
     -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
 }
 
 * {
     border-radius: 0 !important;
     box-shadow: none !important;
+    box-sizing: border-box;
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -20,8 +35,12 @@ html, body {
 ::-webkit-scrollbar-thumb { background: #1B2533; border-radius: 0; }
 ::-webkit-scrollbar-thumb:hover { background: #2A3647; }
 
-#image { position: relative; }
-#border { overflow: hidden; border: 1px solid #1B2533; }
+a:link { color: #8AB4E0; }
+a:visited { color: #7D8A99; }
+a:hover { color: #A8C8E8; }
+
+#image { position: relative; line-height: 0; }
+#border { overflow: hidden; border: 1px solid #1B2533; line-height: 0; }
 canvas {
     image-rendering: optimizeSpeed;
     image-rendering: -moz-crisp-edges;
@@ -31,12 +50,9 @@ canvas {
     -ms-interpolation-mode: nearest-neighbor;
     top: 0px;
     left: 0px;
+    display: block;
 }
 #overlayCanvas { position: absolute; }
-
-a:link { color: #8AB4E0; }
-a:visited { color: #7D8A99; }
-a:hover { color: #A8C8E8; }
 
 hr {
     margin: 5px 0;
@@ -45,167 +61,339 @@ hr {
     border: 0;
 }
 h1 {
-    margin-top: 0px;
-    margin-bottom: 0px;
-    padding: 0px 10px;
-    font-size: 13px;
+    margin: 0 0 12px;
+    padding: 0;
+    font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #C9D1D9;
+    color: #8AB4E0;
 }
 p {
     font-size: 12px;
-    padding: 0px 10px;
+    line-height: 1.55;
+    margin: 0 0 10px;
     color: #7D8A99;
 }
 table, td, th { border: 1px solid #1B2533; }
+table { border-collapse: collapse; margin-top: 12px; }
+th {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #8AB4E0;
+    padding: 6px 10px;
+    text-align: left;
+}
 td {
     font-size: 12px;
-    padding: 0px 10px;
+    padding: 5px 10px;
     color: #C9D1D9;
 }
-tr { padding: 5px 5px; }
 label { font-size: 12px; color: #7D8A99; }
 
-#legacySurvey {
-    display: block;
-    padding: 5px 0px;
-    font-size: 12px;
+/* ------------------------------------------------------------------ top bar */
+#topbar {
+    flex: 0 0 44px;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    background: #0A0F17;
+    border-bottom: 1px solid #1B2533;
+    padding: 0 14px 0 0;
+    z-index: 40;
+}
+#tabs {
+    display: flex;
+    height: 100%;
+    margin: 0;
+    background: transparent;
+    border-bottom: 0;
+}
+#tabs button {
+    height: 100%;
+    background: transparent;
+    margin: 0;
+    border: 0;
+    border-right: 1px solid #1B2533;
+    color: #7D8A99;
+    outline: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    padding: 0 18px;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+#tabs button.inactive { background: transparent; color: #7D8A99; }
+#tabs button:hover, #tabs button.inactive:hover {
+    background: #12233A;
     color: #8AB4E0;
 }
-
-input[type="range"] {
-    padding: 0px;
-    margin-left: 5px;
-    margin-top: 0px;
-    margin-bottom: 0px;
-    width: 360px;
-    accent-color: #8AB4E0;
-    background: #1B2533;
+#tabs a.topbar-link {
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 16px;
+    border-right: 1px solid #1B2533;
+    color: #7D8A99;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
 }
+#tabs a.topbar-link:hover { background: #12233A; color: #8AB4E0; }
+#tabs #tabSettings:not(.inactive) {
+    background: #0E151F;
+    color: #8AB4E0;
+    border-bottom: 2px solid #8AB4E0;
+}
+#topbar-meta {
+    align-self: center;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #3D4A5C;
+    white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- workspace */
+#workspace {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr) 340px;
+    overflow: hidden;
+}
+
+#nav-left, #nav-right {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: #0A0F17;
+    color: #C9D1D9;
+    scrollbar-gutter: stable;
+}
+#nav-left { border-right: 1px solid #1B2533; }
+#nav-right { border-left: 1px solid #1B2533; }
+
+/* tab bodies scroll as panel content, not as fixed-height blocks */
+.tabBody {
+    height: auto;
+    overflow: visible;
+    border-top: 0;
+}
+
+/* ------------------------------------------------------------- panel bits */
+.panel-section {
+    padding: 14px 14px 4px;
+    border-bottom: 1px solid #1B2533;
+}
+.panel-title {
+    margin: 0 0 12px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #5B9BD5;
+}
+.panel-foot {
+    padding: 12px 14px 18px;
+}
+.panel-foot p {
+    font-size: 11px;
+    line-height: 1.5;
+    margin: 0 0 8px;
+    color: #5B6B7E;
+}
+
+.row {
+    width: auto;
+    padding: 0 0 10px;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    color: #C9D1D9;
+}
+.row > label {
+    flex: 1 1 100%;
+    margin-bottom: 2px;
+    line-height: 1.35;
+}
+.row > label.inline-label {
+    flex: 1 1 auto;
+    margin-bottom: 0;
+}
+.row-stack { align-items: stretch; }
+.row-stack > input { flex: 1 1 auto; width: 100%; }
+.row-inline > input,
+.row-inline > select { flex: 1 1 auto; min-width: 0; }
+.row-inline > input.numeric { flex: 0 0 82px; }
+.row-inline > select.compact { flex: 0 0 90px; }
+
+#locInput { width: 100%; }
+
+.sliderrow {
+    width: auto;
+    margin: 0;
+    padding: 0 0 12px;
+}
+.sliderrow > label {
+    display: block;
+    margin-bottom: 6px;
+    line-height: 1.35;
+}
+
+#mainSliders { padding-bottom: 4px; }
+
+/* ------------------------------------------------------------ form controls */
 input, select, textarea {
-    margin: 0px 5px;
+    margin: 0;
     background-color: #0E151F;
     color: #C9D1D9;
     border: 1px solid #1B2533;
     border-radius: 0;
-    padding: 2px 4px;
+    padding: 5px 7px;
     font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    height: 28px;
+    outline: none;
 }
 input:focus, select:focus, textarea:focus {
-    outline: none;
     border-color: #8AB4E0;
 }
+select { cursor: pointer; }
 
-#trimbrightInput, #diffbrightInput, #linearInput, #zoomInput, #speedInput, #windowInput {
-    padding: 0px;
-    margin-left: 5px;
-    margin-top: 5px;
-    margin-bottom: 5px;
-    width: 360px;
-}
-
-#nav-left {
-    padding-top: 5px;
-    background-color: #0A0F17;
-    border-right: 1px solid #1B2533;
-    position: fixed;
-    height: 100vh;
-    width: 400px;
-    color: #C9D1D9;
-}
-
-#epoch-legend {
-    float: left;
-    margin-top: 0;
-    margin-left: 400px;
-    padding-top: 0;
-    padding-left: 0;
-    background-color: #05080D;
-    width: 20px;
-    height: 100vh;
-    writing-mode: vertical-rl;
-    text-orientation: upright;
-    font-family: 'JetBrains Mono', monospace;
-    color: #7D8A99;
-}
-
-#image-field {
-    float: left;
-    margin-top: 0px;
-    margin-left: 420px;
-    padding-top: 0px;
-    padding-left: 0px;
-    background-color: #05080D;
-}
-
-#tabs {
-    height: 5%;
-    background: #0A0F17;
-    border-bottom: 1px solid #1B2533;
-}
-#tabs button {
-    float: left;
-    height: 100%;
-    background: #0E151F;
+input[type="range"] {
+    padding: 0;
     margin: 0;
+    width: 100%;
+    accent-color: #8AB4E0;
+    background: #1B2533;
+}
+
+/* Checkbox rows ---------------------------------------------------------- */
+.check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 5px 0;
+}
+.check-row > label {
+    flex: 1 1 auto;
+    color: #E6EDF3;
+    line-height: 1.4;
+    cursor: pointer;
+}
+input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 0 0 auto;
+    position: relative;
+    width: 13px;
+    height: 13px;
+    margin: 2px 0 0;
+    padding: 0;
+    border: 1px solid #2A3647;
+    background-color: #05080D;
+    cursor: pointer;
+}
+input[type="checkbox"]:hover { border-color: #8AB4E0; }
+input[type="checkbox"]:checked {
+    background-color: #8AB4E0;
+    border-color: #8AB4E0;
+}
+input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 3px;
+    height: 7px;
+    border: solid #05080D;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Collapsible control groups --------------------------------------------- */
+#advSettings { padding: 12px 14px 4px; }
+.control-group {
     border: 1px solid #1B2533;
-    border-radius: 0;
-    color: #C9D1D9;
-    outline: 0;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    padding: 0 8px;
+    background: #0A0F17;
+    margin: 0 0 12px;
+}
+.control-group > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-#tabs button.inactive {
-    background: #05080D;
-    color: #7D8A99;
-}
-#tabs button:hover, #tabs button.inactive:hover {
-    background: #12233A;
     color: #8AB4E0;
-    border-color: #5B9BD5;
-    outline: none;
+    list-style: none;
+    user-select: none;
+}
+.control-group > summary::-webkit-details-marker { display: none; }
+.control-group > summary::before {
+    content: "+";
+    color: #5B9BD5;
+    width: 10px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1;
+}
+.control-group[open] > summary::before { content: "\2212"; }
+.control-group > summary:hover { background: #0E151F; }
+.group-tag {
+    margin-left: auto;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: #5B6B7E;
+    border: 1px solid #1B2533;
+    padding: 1px 5px;
+    white-space: nowrap;
+}
+.group-body { padding: 4px 10px 10px; }
+.control-group.mode-inactive > summary { color: #7D8A99; }
+.control-group.mode-inactive > summary::before { color: #3D4A5C; }
+
+.subsettings {
+    border: 0;
+    border-top: 1px solid #1B2533;
+    background-color: transparent;
+    margin: 8px 0 0;
+    padding: 8px 0 0;
+}
+.subsettings .subsettings { border-top: 0; margin-top: 0; padding-top: 0; }
+
+.scope-tag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 4px;
+    border: 1px solid #1B2533;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #5B6B7E;
+    vertical-align: 1px;
 }
 
-.tabSettingsDiv { overflow-y: auto; height: 90%; }
-.tabLinksDiv { overflow-y: auto; height: 10vh; }
-.tabAboutDiv { overflow-y: auto; height: 60vh; }
-
-.row {
-    padding-left: 10px;
-    padding-top: 3px;
-    width: 380px;
-    color: #C9D1D9;
-}
-.sliderrow {
-    margin-top: 0px;
-    padding-top: 3px;
-    padding-left: 10px;
-    width: 380px;
-}
-#mainSliders { padding-bottom: 10px; }
-.inline { float: left; margin-right: 10px; }
-#locInput { width: 370px; }
-#sizeInput { width: 10%; }
-#bandInput { margin: 0px 5px; width: 30%; padding-top: 0px; }
-#bandRow { padding-top: 1px; }
-#colorInput { width: 30%; }
-#modeInput { width: 25%; }
-#verValue {
-    margin: 0;
-    font-size: 2em;
-    font-weight: bold;
-    color: #8AB4E0;
-}
-
+/* Buttons ---------------------------------------------------------------- */
 .buttonRow {
-    margin-top: 15px;
-    margin-bottom: 10px;
-    margin-left: 3px;
+    display: flex;
+    gap: 8px;
+    margin: 0;
+    padding: 12px 14px 14px;
+    border-bottom: 1px solid #1B2533;
 }
 .weakButt, .fullButt {
     margin: 0;
@@ -214,47 +402,151 @@ input:focus, select:focus, textarea:focus {
     color: #C9D1D9;
     border: 1px solid #1B2533;
     border-radius: 0;
-    padding: 4px 8px;
+    padding: 6px 8px;
     font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    cursor: pointer;
+    white-space: nowrap;
 }
-.weakButt { width: 48.5%; }
-.fullButt { width: 99%; }
+.fullButt { flex: 1 1 auto; }
+.weakButt { flex: 0 0 auto; }
 .weakButt:hover, .fullButt:hover {
     background-color: #12233A;
     color: #8AB4E0;
     border-color: #5B9BD5;
 }
 
-.tabBody {
-    float: top;
+/* ------------------------------------------------------------------- stage */
+#stage {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background-color: #05080D;
+    overflow: hidden;
+}
+#stage-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: stretch;
+}
+
+#epoch-legend {
+    flex: 0 0 54px;
+    width: 54px;
+    margin: 0;
+    padding: 10px 6px;
+    background-color: #0A0F17;
+    border-right: 1px solid #1B2533;
     overflow-y: auto;
-    height: 90%;
-    border-top: 2px solid #1B2533;
+    overflow-x: hidden;
+    scrollbar-width: none;
 }
-.subsettings {
-    border: 1px solid #1B2533;
-    padding-bottom: 7px;
-    margin-top: 3px;
-    background-color: #0A0F17;
-}
+#epoch-legend::-webkit-scrollbar { width: 0; height: 0; }
 
-.badge-sci {
-    display: inline-flex;
+#frame-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+.frame-chip {
+    display: flex;
     align-items: center;
-    padding: 0.125rem 0.5rem;
+    justify-content: space-between;
+    gap: 3px;
+    width: 100%;
+    height: 26px;
+    padding: 0 5px;
     border: 1px solid #1B2533;
+    border-left: 2px solid #1B2533;
     background-color: #0A0F17;
-    color: #7D8A99;
+    color: #C9D1D9;
     font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
 }
-.font-mono-sci {
-    font-family: 'JetBrains Mono', monospace;
-    font-feature-settings: "tnum" 1, "zero" 1;
+.frame-chip .frame-mark {
+    width: 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: #7D8A99;
+}
+.frame-chip .frame-num { letter-spacing: 0.04em; }
+.frame-chip:hover {
+    background-color: #0E151F;
+    border-color: #5B9BD5;
+    color: #8AB4E0;
+}
+.frame-chip:hover .frame-mark { color: #8AB4E0; }
+.frame-chip.active {
+    background-color: #12233A;
+    border-color: #1B2533;
+    border-left-color: #8AB4E0;
+    color: #E6EDF3;
+}
+.frame-chip.active .frame-mark { color: #8AB4E0; }
+
+#image-field {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 18px 20px;
+    background-color: #05080D;
 }
 
-/* jQuery UI overrides */
+#verValue {
+    margin: 4px 0 10px;
+    padding: 0;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    color: #8AB4E0;
+    text-align: center;
+    white-space: nowrap;
+}
+
+#pawnstarsLink {
+    display: block;
+    margin-top: 12px;
+    line-height: 0;
+}
+#pawnstars { line-height: 0; }
+#pawnstars img { display: block; }
+
+/* ------------------------------------------------------------ info overlay */
+#info-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    background-color: #05080D;
+    overflow-y: auto;
+    padding: 24px 32px 60px;
+}
+#info-overlay .tabBody {
+    max-width: 1000px;
+    margin: 0 auto;
+    height: auto;
+    overflow: visible;
+}
+#info-overlay p { max-width: 90ch; }
+#info-overlay a#legacySurvey { display: block; padding: 0 0 8px; }
+#info-overlay .row { display: block; }
+
+#zooiSubjects { padding: 0; }
+
+/* ---------------------------------------------------------- jQuery UI bits */
 .ui-widget, .ui-widget-content, .ui-widget-header {
     background: #0A0F17;
     border-color: #1B2533;
@@ -274,12 +566,48 @@ input:focus, select:focus, textarea:focus {
 }
 .ui-slider {
     background: #1B2533;
-    border-color: #1B2533;
+    border: 0;
 }
+.ui-slider-horizontal { height: 5px; }
 .ui-slider .ui-slider-handle {
     background: #8AB4E0;
-    border-color: #8AB4E0;
+    border: 0;
 }
-.ui-slider .ui-slider-range {
-    background: #8AB4E0;
+.ui-slider-horizontal .ui-slider-handle {
+    width: 11px;
+    height: 17px;
+    top: -6px;
+    margin-left: -5px;
+    cursor: pointer;
 }
+.ui-slider .ui-slider-range { background: #8AB4E0; }
+
+/* jQuery UI sliders must match panel width, not the legacy fixed 360px. */
+#trimbrightInput, #diffbrightInput, #linearInput, #zoomInput,
+#speedInput, #windowInput, #diffWindowInput {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* -------------------------------------------------------------- responsive */
+@media (max-width: 1500px) {
+    #workspace { grid-template-columns: 300px minmax(0, 1fr) 300px; }
+    #image-field { padding-left: 12px; padding-right: 12px; }
+    #verValue { font-size: 17px; }
+    .group-tag { display: none; }
+    label { font-size: 11px; }
+    .row-inline > input.numeric { flex: 0 0 70px; }
+    .row-inline > select.compact { flex: 0 0 80px; }
+}
+@media (max-width: 1280px) {
+    #workspace { grid-template-columns: 260px minmax(0, 1fr) 260px; }
+    #topbar-meta { display: none; }
+    #tabs button { padding: 0 12px; font-size: 10px; }
+    #verValue { font-size: 15px; }
+    input, select { font-size: 11px; }
+    .check-row > label { font-size: 11px; }
+}
+
+/* Keep the numeric readouts readable when labels wrap in narrow panels. */
+input.numeric { text-align: left; }

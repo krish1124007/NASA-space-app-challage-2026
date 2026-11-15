@@ -37,8 +37,15 @@ UNWISE_GAIA_URL = os.environ.get(
 IRSA_SIA_URL = os.environ.get("WV_IRSA_SIA_URL", "https://irsa.ipac.caltech.edu/SIA")
 SPHEREX_COLLECTION = os.environ.get("WV_SPHEREX_COLLECTION", "spherex_dr1")
 SPHEREX_CUTOUT_SIZE_DEG = float(os.environ.get("WV_SPHEREX_CUTOUT_SIZE_DEG", "0.05"))
+# Default number of blink frames. Overridable per request with ?limit=.
 SPHEREX_MAX_VISITS = int(os.environ.get("WV_SPHEREX_MAX_VISITS", "12"))
+# Hard safety cap for a single request.
+SPHEREX_VISIT_LIMIT_MAX = int(os.environ.get("WV_SPHEREX_VISIT_LIMIT_MAX", "200"))
 SPHEREX_FRAME_PIXELS = int(os.environ.get("WV_SPHEREX_FRAME_PIXELS", "512"))
+# Parallel IRSA cutout downloads. Higher = faster cold start, more load on IRSA.
+SPHEREX_DOWNLOAD_WORKERS = int(os.environ.get("WV_SPHEREX_DOWNLOAD_WORKERS", "8"))
+# Seconds before a cached manifest is re-queried. 0 = never expire.
+SPHEREX_MANIFEST_TTL = float(os.environ.get("WV_SPHEREX_MANIFEST_TTL", "0"))
 SPHEREX_HTTP_TIMEOUT = float(os.environ.get("WV_SPHEREX_HTTP_TIMEOUT", "120"))
 SPHEREX_RETRIES = int(os.environ.get("WV_SPHEREX_RETRIES", "8"))
 

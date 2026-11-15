@@ -15,6 +15,7 @@ import hashlib
 import io
 import math
 import re
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -45,10 +46,34 @@ def field_id(ra: float, dec: float) -> str:
     return f"ra{ra:.4f}_dec{dec:+.4f}".replace("+", "p").replace("-", "m")
 
 
+_thread_local = threading.local()
+
+
 def _session() -> requests.Session:
-    s = requests.Session()
-    s.headers.update({"User-Agent": USER_AGENT})
+    """One keep-alive session per worker thread.
+
+    Downloads run in a thread pool; reusing a session per thread keeps the TLS
+    connection to IRSA open instead of paying a handshake for every cutout.
+    """
+    s = getattr(_thread_local, "session", None)
+    if s is None:
+        s = requests.Session()
+        s.headers.update({"User-Agent": USER_AGENT})
+        adapter = requests.adapters.HTTPAdapter(pool_connections=8, pool_maxsize=16)
+        s.mount("https://", adapter)
+        s.mount("http://", adapter)
+        _thread_local.session = s
     return s
+
+
+# One lock per field so uncached requests for different fields do not serialize.
+_field_locks: dict[str, threading.Lock] = {}
+_field_locks_guard = threading.Lock()
+
+
+def _field_lock(fid: str) -> threading.Lock:
+    with _field_locks_guard:
+        return _field_locks.setdefault(fid, threading.Lock())
 
 
 def _request_with_retry(session: requests.Session, url: str, **kwargs) -> requests.Response:
@@ -77,8 +102,8 @@ def query_sia(ra: float, dec: float, radius_deg: float,
         "POS": f"CIRCLE {ra:.6f} {dec:.6f} {max(radius_deg, 1e-4):.6f}",
         "COLLECTION": collection,
     }
-    with _session() as s:
-        resp = _request_with_retry(s, config.IRSA_SIA_URL, params=params)
+    s = _session()
+    resp = _request_with_retry(s, config.IRSA_SIA_URL, params=params)
 
     table = parse_single_table(io.BytesIO(resp.content)).to_table(use_names_over_ids=True)
     rows: list[dict[str, Any]] = []
@@ -147,8 +172,8 @@ def download_cutout(url: str, ra: float, dec: float, size_deg: float,
     destination.parent.mkdir(parents=True, exist_ok=True)
     sep = "&" if "?" in url else "?"
     cutout_url = f"{url}{sep}center={ra:.6f},{dec:.6f}d&size={size_deg:.6f}"
-    with _session() as s:
-        resp = _request_with_retry(s, cutout_url)
+    s = _session()
+    resp = _request_with_retry(s, cutout_url)
     if not resp.content.startswith(b"SIMPLE"):
         raise RuntimeError(
             f"IRSA did not return FITS for {cutout_url}: "
@@ -166,85 +191,93 @@ def prepare_visits(ra: float, dec: float, detector: str,
                    collection: str | None = None) -> dict[str, Any]:
     """Query IRSA and cache all cutouts for one field/detector."""
     size_deg = size_deg or config.SPHEREX_CUTOUT_SIZE_DEG
-    limit = limit or config.SPHEREX_MAX_VISITS
+    limit = int(limit or config.SPHEREX_MAX_VISITS)
+    limit = max(2, min(limit, config.SPHEREX_VISIT_LIMIT_MAX))
     fid = field_id(ra, dec)
     field_dir = config.DATA_DIR / "spherex" / fid
     cutout_dir = field_dir / "cutouts"
     field_dir.mkdir(parents=True, exist_ok=True)
 
-    manifest_path = field_dir / f"manifest_{detector}.json"
-    existing = load_manifest(ra, dec, detector)
-    if existing and _manifest_matches(existing, detector, size_deg, collection):
-        # Reuse an existing field: avoids a new SIA query and new downloads on
-        # every browser refresh.
-        return existing
+    # Only one request at a time builds a given field. Other fields still run
+    # in parallel.
+    with _field_lock(fid):
+        manifest_path = field_dir / f"manifest_{detector}.json"
+        existing = load_manifest(ra, dec, detector)
+        if existing and _manifest_matches(existing, detector, size_deg,
+                                          collection, limit):
+            # Reuse an existing field: avoids a new SIA query and new downloads
+            # on every browser refresh.
+            return existing
 
-    rows = query_sia(ra, dec, radius_deg=size_deg / 2.0, collection=collection)
-    visits = select_visits(rows, detector, limit=limit)
-    if not visits:
-        raise LookupError(
-            f"No SPHEREx {detector} visits found at RA={ra:.5f}, Dec={dec:+.5f}. "
-            "Try another field or detector."
-        )
+        rows = query_sia(ra, dec, radius_deg=size_deg / 2.0, collection=collection)
+        visits = select_visits(rows, detector, limit=limit)
+        if not visits:
+            raise LookupError(
+                f"No SPHEREx {detector} visits found at RA={ra:.5f}, Dec={dec:+.5f}. "
+                "Try another field or detector."
+            )
 
-    cached = []
-    failures = []
+        cached = []
+        failures = []
 
-    def _fetch(visit):
-        name = _safe_name(visit["obs_id"] or hashlib.md5(visit["access_url"].encode()).hexdigest())
-        path = cutout_dir / f"{detector}_{name}.fits"
-        try:
-            download_cutout(visit["access_url"], ra, dec, size_deg, path)
-            return visit, path, None
-        except Exception as exc:
-            return visit, path, exc
+        def _fetch(visit):
+            name = _safe_name(visit["obs_id"] or hashlib.md5(visit["access_url"].encode()).hexdigest())
+            path = cutout_dir / f"{detector}_{name}.fits"
+            try:
+                download_cutout(visit["access_url"], ra, dec, size_deg, path)
+                return visit, path, None
+            except Exception as exc:
+                return visit, path, exc
 
-    # IRSA cutout requests are independent; a few workers keep first-run
-    # latency reasonable without hammering the service.
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        results = list(pool.map(_fetch, visits))
+        # IRSA cutout requests are independent; a few workers keep first-run
+        # latency reasonable without hammering the service.
+        workers = max(1, min(config.SPHEREX_DOWNLOAD_WORKERS, len(visits)))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            results = list(pool.map(_fetch, visits))
 
-    for visit, path, error in results:
-        if error is not None:
-            failures.append(f"{visit['obs_id']}: {error}")
-            continue
-        cached.append({
-            "obs_id": visit["obs_id"],
-            "mjd": visit["t_min"],
-            "mjd_min": visit.get("t_min"),
-            "mjd_max": visit.get("t_max"),
+        for visit, path, error in results:
+            if error is not None:
+                failures.append(f"{visit['obs_id']}: {error}")
+                continue
+            cached.append({
+                "obs_id": visit["obs_id"],
+                "mjd": visit["t_min"],
+                "mjd_min": visit.get("t_min"),
+                "mjd_max": visit.get("t_max"),
+                "detector": detector,
+                "url": visit["access_url"],
+                "file": path.relative_to(config.DATA_DIR).as_posix(),
+                "collection": visit.get("collection"),
+            })
+
+        if len(cached) < 2:
+            detail = "; ".join(failures[:3]) if failures else "no usable cutouts"
+            raise RuntimeError(
+                f"Only {len(cached)} SPHEREx cutout(s) could be downloaded for "
+                f"{detector}. IRSA may be busy; retry in a minute. {detail}"
+            )
+
+        manifest = {
+            "dataset": "SPHEREx Level 2 spectral image",
+            "field_id": fid,
+            "ra_deg": ra,
+            "dec_deg": dec,
             "detector": detector,
-            "url": visit["access_url"],
-            "file": path.relative_to(config.DATA_DIR).as_posix(),
-            "collection": visit.get("collection"),
-        })
-
-    if len(cached) < 2:
-        detail = "; ".join(failures[:3]) if failures else "no usable cutouts"
-        raise RuntimeError(
-            f"Only {len(cached)} SPHEREx cutout(s) could be downloaded for "
-            f"{detector}. IRSA may be busy; retry in a minute. {detail}"
-        )
-
-    manifest = {
-        "dataset": "SPHEREx Level 2 spectral image",
-        "field_id": fid,
-        "ra_deg": ra,
-        "dec_deg": dec,
-        "detector": detector,
-        "cutout_size_deg": size_deg,
-        "collection": collection or config.SPHEREX_COLLECTION,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "visits": cached,
-    }
-    _write_json(manifest_path, manifest)
-    # Also keep a convenience copy of the most recent manifest.
-    _write_json(field_dir / "manifest.json", manifest)
-    return manifest
+            "cutout_size_deg": size_deg,
+            "collection": collection or config.SPHEREX_COLLECTION,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "visit_limit": limit,
+            "visits": cached,
+        }
+        _write_json(manifest_path, manifest)
+        # Also keep a convenience copy of the most recent manifest.
+        _write_json(field_dir / "manifest.json", manifest)
+        return manifest
 
 
 def _manifest_matches(manifest: dict[str, Any], detector: str,
-                      size_deg: float, collection: str | None) -> bool:
+                      size_deg: float, collection: str | None,
+                      limit: int | None = None) -> bool:
     if manifest.get("detector") != detector:
         return False
     stored_size = manifest.get("cutout_size_deg")
@@ -252,7 +285,28 @@ def _manifest_matches(manifest: dict[str, Any], detector: str,
         return False
     if collection and manifest.get("collection") != collection:
         return False
-    return bool(manifest.get("visits"))
+    if not manifest.get("visits"):
+        return False
+
+    # Legacy manifests predate visit_limit; their frame count is the limit
+    # they were built with.
+    stored_limit = manifest.get("visit_limit")
+    if stored_limit is None:
+        stored_limit = len(manifest["visits"])
+    if limit is not None and int(stored_limit) != int(limit):
+        return False
+
+    ttl = config.SPHEREX_MANIFEST_TTL
+    if ttl > 0:
+        generated = manifest.get("generated_at")
+        try:
+            age = (datetime.now(timezone.utc)
+                   - datetime.fromisoformat(generated)).total_seconds()
+            if age > ttl:
+                return False
+        except (TypeError, ValueError):
+            pass
+    return True
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -520,6 +574,7 @@ def build_frames(ra: float, dec: float, detector: str = "D2",
         "NAXIS2": out_pixels,
         "pixscale": pixscale,
         "n_visits": len(ims),
+        "visit_limit": manifest.get("visit_limit"),
         "frame_waves": frame_waves,
         "wavelength_note": wavelength_note,
     }
@@ -540,3 +595,123 @@ def load_manifest(ra: float, dec: float, detector: str | None = None) -> dict[st
         except (OSError, ValueError):
             continue
     return None
+
+def cached_real_spectrum(ra: float, dec: float) -> dict[str, Any]:
+    """Extract a coarse real spectrum from cached SPHEREx cutouts."""
+    fid = field_id(ra, dec)
+    points = []
+    detectors_found = []
+
+    for detector in config.DETECTORS:
+        manifest = load_manifest(ra, dec, detector)
+        if not manifest or not manifest.get("visits"):
+            continue
+        detectors_found.append(detector)
+        for visit in manifest["visits"]:
+            fits_path = config.DATA_DIR / visit["file"]
+            if not fits_path.exists():
+                continue
+            try:
+                with fits.open(fits_path, memmap=False) as hdul:
+                    image = hdul["IMAGE"].data
+                    if image is None:
+                        continue
+                    wave = wavelength_grid(hdul, detector=detector)
+                    ny, nx = image.shape
+                    cy, cx = ny // 2, nx // 2
+                    sl = image[max(0, cy-1):cy+2, max(0, cx-1):cx+2]
+                    flux = float(np.nanmedian(sl))
+                    if wave is not None:
+                        wsl = wave[max(0, cy-1):cy+2, max(0, cx-1):cx+2]
+                        wl = float(np.nanmedian(wsl))
+                    else:
+                        lo, hi = config.DETECTORS.get(detector, (1.0, 1.5))
+                        wl = 0.5 * (lo + hi)
+                    err = None
+                    if "VARIANCE" in hdul:
+                        var = hdul["VARIANCE"].data
+                        if var is not None:
+                            vsl = var[max(0, cy-1):cy+2, max(0, cx-1):cx+2]
+                            err = float(np.sqrt(max(0.0, np.nanmedian(vsl))))
+                    points.append({
+                        "detector": detector,
+                        "wavelength_um": round(wl, 4),
+                        "flux_mjy": round(flux, 4),
+                        "flux_err_mjy": None if err is None else round(err, 4),
+                        "file": visit["file"],
+                        "mjd": visit.get("mjd"),
+                    })
+            except Exception:
+                continue
+
+    points.sort(key=lambda p: p["wavelength_um"])
+    return {
+        "ra_deg": ra,
+        "dec_deg": dec,
+        "field_id": fid,
+        "source": "cached_cutouts",
+        "detectors": detectors_found,
+        "n_points": len(points),
+        "points": points,
+    }
+
+
+def cached_real_spectrum(ra: float, dec: float) -> dict[str, Any]:
+    """Extract a coarse real spectrum from cached SPHEREx cutouts."""
+    fid = field_id(ra, dec)
+    points = []
+    detectors_found = []
+
+    for detector in config.DETECTORS:
+        manifest = load_manifest(ra, dec, detector)
+        if not manifest or not manifest.get("visits"):
+            continue
+        detectors_found.append(detector)
+        for visit in manifest["visits"]:
+            fits_path = config.DATA_DIR / visit["file"]
+            if not fits_path.exists():
+                continue
+            try:
+                with fits.open(fits_path, memmap=False) as hdul:
+                    image = hdul["IMAGE"].data
+                    if image is None:
+                        continue
+                    wave = wavelength_grid(hdul, detector=detector)
+                    ny, nx = image.shape
+                    cy, cx = ny // 2, nx // 2
+                    sl = image[max(0, cy-1):cy+2, max(0, cx-1):cx+2]
+                    flux = float(np.nanmedian(sl))
+                    if wave is not None:
+                        wsl = wave[max(0, cy-1):cy+2, max(0, cx-1):cx+2]
+                        wl = float(np.nanmedian(wsl))
+                    else:
+                        lo, hi = config.DETECTORS.get(detector, (1.0, 1.5))
+                        wl = 0.5 * (lo + hi)
+                    err = None
+                    if "VARIANCE" in hdul:
+                        var = hdul["VARIANCE"].data
+                        if var is not None:
+                            vsl = var[max(0, cy-1):cy+2, max(0, cx-1):cx+2]
+                            err = float(np.sqrt(max(0.0, np.nanmedian(vsl))))
+                    points.append({
+                        "detector": detector,
+                        "wavelength_um": round(wl, 4),
+                        "flux_mjy": round(flux, 4),
+                        "flux_err_mjy": None if err is None else round(err, 4),
+                        "file": visit["file"],
+                        "mjd": visit.get("mjd"),
+                    })
+            except Exception:
+                continue
+
+    points.sort(key=lambda p: p["wavelength_um"])
+    return {
+        "ra_deg": ra,
+        "dec_deg": dec,
+        "field_id": fid,
+        "source": "cached_cutouts",
+        "detectors": detectors_found,
+        "n_points": len(points),
+        "points": points,
+    }
+

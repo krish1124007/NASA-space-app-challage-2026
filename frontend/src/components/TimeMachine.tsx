@@ -83,6 +83,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
 
   // Multi-mission Pan-STARRS & Live IRSA stream state
   const [useLiveSpherex, setUseLiveSpherex] = useState<boolean>(false);
+  const [maxFrames, setMaxFrames] = useState<number>(12);
   const [showPawnstars, setShowPawnstars] = useState<boolean>(false);
   const [pawnstarsUrl, setPawnstarsUrl] = useState<string | null>(null);
   const [loadingPawnstars, setLoadingPawnstars] = useState<boolean>(false);
@@ -101,6 +102,14 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
   useEffect(() => {
     loadData(currentTargetId);
   }, [currentTargetId]);
+
+  // Reload live SPHEREx frames when max frame count changes
+  useEffect(() => {
+    if (useLiveSpherex) {
+      loadData(currentTargetId, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxFrames]);
 
   const loadGaia = async (ra: number, dec: number) => {
     try {
@@ -142,6 +151,7 @@ export const TimeMachine: React.FC<TimeMachineProps> = ({
           stretch: 1.0,
           invert: false,
           pixels: 512,
+          limit: maxFrames,
         });
 
         const dims: [number, number] = [

@@ -73,6 +73,15 @@ Validate a field:
 python scripts/validate_manifest.py data/spherex/ra210.8023_decp54.3490
 ```
 
+## Routes
+| Route | Purpose |
+|-------|---------|
+| `/` | SPHEREx Explorer (React) homepage |
+| `/legacy` | Classic WiseView featured-target homepage |
+| `/legacy/viewer` | Classic WiseView flash3 control surface |
+| `/legacy?viewer=1` | Alias for `/legacy/viewer` |
+| `/?legacy=1` | Alias for `/legacy/viewer` |
+
 ## API
 
 | Route | Purpose |

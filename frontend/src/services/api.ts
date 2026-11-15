@@ -164,6 +164,7 @@ export const ApiService = {
     stretch?: number;
     invert?: boolean;
     pixels?: number;
+    limit?: number;
   }): Promise<{
     instrument: string;
     dataset: string;
@@ -194,10 +195,11 @@ export const ApiService = {
     query.append('dec', params.dec.toString());
     if (params.detector) query.append('detector', params.detector);
     if (params.wavelength) query.append('wavelength', params.wavelength.toString());
-    if (params.sizeArcsec) query.append('size_arcsec', params.sizeArcsec.toString());
+    if (params.sizeArcsec) query.append('size', params.sizeArcsec.toString());
     if (params.stretch !== undefined) query.append('stretch', params.stretch.toString());
     if (params.invert !== undefined) query.append('invert', params.invert ? '1' : '0');
     if (params.pixels) query.append('pixels', params.pixels.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
 
     const res = await fetch(`${API_BASE}/spherex/frames?${query.toString()}`);
     if (!res.ok) throw new Error('Failed to render live SPHEREx frames from NASA IRSA');
