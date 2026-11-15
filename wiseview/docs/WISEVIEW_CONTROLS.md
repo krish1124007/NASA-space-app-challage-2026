@@ -7,17 +7,17 @@ There are two front-ends sharing one backend:
 
 | UI | Route | Source | Status |
 |----|-------|--------|--------|
-| SPHEREx Explorer (React) | `/` | `frontend/src/`, bundled into `wv/www/static/assets/` | Default page |
-| Classic WiseView homepage | `/legacy` | `wv/www/templates/flash3_home.html` | Featured-target landing page |
-| Classic WiseView viewer | `/legacy/viewer` (also `/legacy?viewer=1`) | `wv/www/templates/flash3.html`, `wv/www/static/flash3.js` | Full control set |
-| Classic WiseView (query flag) | `/?legacy=1` | `wv/www/templates/flash3.html` | Full control set |
+| Classic WiseView homepage | `/` | `wv/www/templates/flash3_home.html` | Default page, featured-target landing |
+| Classic WiseView viewer | `/viewer` (also `/?viewer=1`) | `wv/www/templates/flash3.html`, `wv/www/static/flash3.js` | Full control set |
+| SPHEREx Explorer (React) | `/explorer` | `frontend/src/`, bundled into `wv/www/static/assets/` | React explorer |
+| Classic WiseView (query flag) | `/?legacy=1` | redirect to `/viewer` | Full control set |
 
 Both are served by `wv/www/unoverse.py`. The classic UI is the one with the dense
 control panel and the one this document covers first.
 
 ---
 
-## 1. Classic WiseView (`/legacy`)
+## 1. Classic WiseView (`/`)
 
 ### 1.1 Settings panel: target and instrument
 
@@ -369,7 +369,7 @@ Frontend endpoints and detector ranges live in
 ### Sharing and reproducing a view
 - Classic UI: copy the URL; every visual control except the epoch/legend state
   is in the hash.
-- To force the classic UI from a link, append `?legacy=1` or use `/legacy`.
+- To force the classic UI from a link, append `?legacy=1` or open `/viewer`.
 - Pin `zoom=fit` for a layout-independent link, or an explicit number for an
   exact scale.
 

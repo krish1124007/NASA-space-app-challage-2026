@@ -17,6 +17,7 @@ from flask import (
     Flask,
     jsonify,
     make_response,
+    redirect,
     render_template,
     request,
     send_file,
@@ -143,10 +144,12 @@ def pawnstars():
 
 
 class SearchV3_Page(Resource):
+    """Serve the bundled SPHEREx Explorer React application."""
+
     def get(self):
-        legacy = request.args.get("legacy")
-        if legacy in ("1", "true", "True"):
-            return make_response(render_template("flash3.html"))
+        # Old links used ?legacy=1 on the React route. Keep them working.
+        if request.args.get("legacy") in ("1", "true", "True"):
+            return redirect("/viewer", code=302)
         index_file = os.path.join(FRONTEND_DIST, "index.html")
         if not os.path.exists(index_file):
             alt_path = os.path.join(os.path.dirname(__file__), "dist", "index.html")
@@ -156,20 +159,29 @@ class SearchV3_Page(Resource):
             with open(index_file, "r", encoding="utf-8") as f:
                 html = f.read()
             return make_response(html, 200, {"Content-Type": "text/html; charset=utf-8"})
-        return make_response(render_template("flash3.html"))
+        # No React build: send the visitor to the classic viewer instead.
+        return redirect("/viewer", code=302)
 
-api.add_resource(SearchV3_Page, "/", "/wiseview-v3", "/wiseview-v2", "/wiseview")
+api.add_resource(
+    SearchV3_Page,
+    "/explorer",
+    "/wiseview-v3",
+    "/wiseview-v2",
+    "/wiseview",
+)
 
 
-@app.get("/legacy")
+@app.get("/")
 def legacy_page():
     """Landing page for the classic WiseView UI.
 
-    ``/legacy?viewer=1`` keeps old bookmarks working after the homepage took
-    over this route.
+    ``/?viewer=1`` and ``/?legacy=1`` are kept as aliases for the viewer so
+    bookmarks created before the classic UI moved to the site root still work.
     """
     if request.args.get("viewer") in ("1", "true", "True"):
-        return make_response(render_template("flash3.html"))
+        return redirect("/viewer", code=302)
+    if request.args.get("legacy") in ("1", "true", "True"):
+        return redirect("/viewer", code=302)
     try:
         targets = target_mod.get_targets()
     except Exception as exc:  # pragma: no cover - catalogue should be static
@@ -181,15 +193,37 @@ def legacy_page():
         viewer_url=target_mod.VIEWER_PATH,
     ))
 
-@app.get("/legacy/spectrum")
+
+@app.get("/spectrum")
 def legacy_spectrum_page():
     return make_response(render_template("flash3_spectrum.html"))
 
 
-@app.get("/legacy/viewer")
+@app.get("/viewer")
 def legacy_viewer():
     """Classic WiseView flash3 control surface."""
     return make_response(render_template("flash3.html"))
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible redirects for the old /legacy URLs.
+# ---------------------------------------------------------------------------
+
+@app.get("/legacy")
+def legacy_redirect():
+    if request.args.get("viewer") in ("1", "true", "True"):
+        return redirect("/viewer", code=302)
+    return redirect("/", code=301)
+
+
+@app.get("/legacy/viewer")
+def legacy_viewer_redirect():
+    return redirect("/viewer", code=301)
+
+
+@app.get("/legacy/spectrum")
+def legacy_spectrum_redirect():
+    return redirect("/spectrum", code=301)
 
 
 @app.get("/assets/<path:filename>")

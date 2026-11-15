@@ -32,7 +32,7 @@
     }
 
     var targets = payload.targets || [];
-    var viewerUrl = payload.viewer || '/legacy/viewer';
+    var viewerUrl = payload.viewer || '/viewer';
     var SEARCH_SIZE_ARCSEC = 600;
     var SEARCH_DETECTOR = 'D2';
 
@@ -238,7 +238,7 @@
         });
     });
 
-    // Deep links from other pages: /legacy#ra=..&dec=.. should open the viewer.
+    // Deep links from other pages: /#ra=..&dec=.. should open the viewer.
     if (window.location.hash && /(?:^#|&)(?:ra|dec)=/.test(window.location.hash)) {
         window.location.replace(viewerUrl + window.location.hash);
     }

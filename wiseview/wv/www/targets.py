@@ -19,7 +19,7 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-VIEWER_PATH = "/legacy/viewer"
+VIEWER_PATH = "/viewer"
 TIME_MACHINE_ARCSEC = 120
 MIN_ARCSEC = 36
 MAX_ARCSEC = 1080
@@ -163,7 +163,7 @@ def _normalise(raw: Dict[str, Any]) -> Dict[str, Any]:
         "size_time_machine": time_size,
         "href_explorer": _viewer_url(explorer_size, ra, dec, detector, pm_ra, pm_dec, cached_visits),
         "href_time_machine": _viewer_url(time_size, ra, dec, detector, pm_ra, pm_dec, cached_visits),
-        "href_spectrum": f"/legacy/spectrum?ra={ra:.6f}&dec={dec:.6f}&size={explorer_size}&detector={detector}",
+        "href_spectrum": f"/spectrum?ra={ra:.6f}&dec={dec:.6f}&size={explorer_size}&detector={detector}",
     }
 
 
