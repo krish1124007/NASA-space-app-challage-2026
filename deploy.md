@@ -107,20 +107,21 @@ Blueprint.
 
 The blueprint requests:
 
+- Branch `prod`
 - Python 3.12.5
-- A 1 GB persistent disk mounted at `/var/data`
-- `WV_DATA_DIR=/var/data`
+- No persistent disk, because the M101 D2 cache ships inside the repo checkout
 - Health check at `/api/health`
+
+The blueprint does not set `WV_DATA_DIR`. The app therefore uses its bundled
+`wiseview/data` directory, which contains the tracked M101 D2 cache. That cache
+is available on the very first request after a deploy, with no IRSA download.
 
 ### Free-plan note
 
-Persistent disks require a paid Render instance. If you are using the free plan,
-remove the `disk:` block and change `plan: starter` to `plan: free` in
-`render.yaml`, or delete `render.yaml` and create the service manually.
-
-Without a disk, cached cutouts and rendered PNG frames are lost whenever the
-service restarts. SPHEREx frames will be downloaded and rendered again on the
-next request.
+Change `plan: starter` to `plan: free` in `render.yaml` if you are on the free
+plan. The 66 MB bundled cache still works, because it is part of the checkout
+and not of a Render disk. Frames generated at runtime are ephemeral on both
+plans and are rebuilt on demand.
 
 ---
 
@@ -134,6 +135,7 @@ Use this if you do not want to use `render.yaml`.
 
 ```text
 Name:              wiseview
+Branch:            prod
 Root Directory:    wiseview
 Runtime:           Python 3.12
 Build Command:     pip install -r requirements.txt
@@ -145,20 +147,13 @@ Health Check Path: /api/health
 
 ```text
 PYTHON_VERSION=3.12.5
-WV_DATA_DIR=/var/data
 ```
 
-5. Optional: add a persistent disk:
-
-```text
-Name:       wiseview-data
-Mount Path: /var/data
-Size:       1 GB or larger
-```
-
+5. Do not add `WV_DATA_DIR` unless you also attach a persistent disk. Leaving it
+   unset makes the app read the bundled `wiseview/data` cache.
 6. Choose an instance type with enough memory. Astropy, NumPy, and FITS
    processing can exceed a small 512 MB instance during a SPHEREx frame build.
-7. Deploy.
+7. Deploy the `prod` branch.
 
 ---
 
@@ -169,7 +164,10 @@ Only these are required for a basic Render deployment:
 | Variable | Value | Purpose |
 |----------|-------|---------|
 | `PYTHON_VERSION` | `3.12.5` | Render Python runtime |
-| `WV_DATA_DIR` | `/var/data` | Persistent data and media directory |
+
+`WV_DATA_DIR` is optional. Leave it unset for the bundled cache. Set it to a
+persistent disk mount (for example `/var/data`) only if you attach a disk and
+seed it yourself.
 
 Optional tuning variables, based on `wiseview/.env.example`:
 
@@ -196,7 +194,7 @@ index files are optional. If they are missing, `/api/health` reports
 
 ---
 
-## 7. Persistent disk and the 732 MB data directory
+## 7. Bundled data policy for the `prod` branch
 
 The `prod` branch intentionally tracks only one cached field:
 
@@ -216,9 +214,14 @@ On `prod`, the five other featured targets are marked **Temporarily
 Unavailable**. They remain visible in the catalogue but their action buttons are
 disabled, so visitors are not sent to a missing cache.
 
-The first request for any field not included in `prod` will query IRSA and cache
-the result in `WV_DATA_DIR`. If you use a persistent disk, a new disk starts
-empty; the app fills it on demand.
+The first request for any field that is not bundled will query IRSA and cache the
+result under `wiseview/data`. On Render that data is ephemeral unless a disk is
+attached.
+
+Only the branch tip is trimmed. Older commits in this repository still contain
+the original 732 MB cache, so a fresh `git clone` downloads that history. If the
+clone size becomes a problem, rewrite history with `git filter-repo` or push
+`prod` as an orphan branch. That is a separate, destructive decision.
 
 ---
 
@@ -312,14 +315,16 @@ persistent disk with cached fields.
 
 ### Images disappear after a restart
 
-No persistent disk is attached, or the app is writing outside `/var/data`.
-Confirm:
+Runtime-generated frames live in the ephemeral filesystem. That is expected
+without a persistent disk. The bundled M101 D2 frames come from the checkout and
+survive restarts.
+
+If you attach a disk, set `WV_DATA_DIR` to its mount path and copy the bundled
+cache into it:
 
 ```text
 WV_DATA_DIR=/var/data
 ```
-
-and that the disk is mounted at `/var/data`.
 
 ### unWISE mode reports unavailable
 
