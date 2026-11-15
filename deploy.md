@@ -108,7 +108,7 @@ Blueprint.
 
 The blueprint requests:
 
-- Branch `prod`
+- Branch `prod-clean`
 - Python 3.12.5
 - No persistent disk, because the M101 D2 cache ships inside the repo checkout
 - Health check at `/api/health`
@@ -136,7 +136,7 @@ Use this if you do not want to use `render.yaml`.
 
 ```text
 Name:              wiseview
-Branch:            prod
+Branch:            prod-clean
 Root Directory:    wiseview
 Runtime:           Python 3.12
 Build Command:     pip install -r requirements.txt
@@ -154,7 +154,7 @@ PYTHON_VERSION=3.12.5
    unset makes the app read the bundled `wiseview/data` cache.
 6. Choose an instance type with enough memory. Astropy, NumPy, and FITS
    processing can exceed a small 512 MB instance during a SPHEREx frame build.
-7. Deploy the `prod` branch.
+7. Deploy the `prod-clean` branch.
 
 ---
 
@@ -195,9 +195,9 @@ index files are optional. If they are missing, `/api/health` reports
 
 ---
 
-## 7. Bundled data policy for the `prod` branch
+## 7. Bundled data policy for the `prod-clean` branch
 
-The `prod` branch intentionally tracks only one cached field:
+The `prod-clean` branch intentionally tracks only one cached field:
 
 ```text
 wiseview/data/spherex/ra210.8023_decp54.3490/
@@ -209,9 +209,9 @@ wiseview/data/gaia/ra210.8023_decp54.3490_r0.0500.json
 ```
 
 That is about 66 MB. The other cached fields are kept on the development branch
-and local working copy, but are not part of the `prod` deployment.
+and local working copy, but are not part of the `prod-clean` deployment.
 
-On `prod`, the five other featured targets are marked **Temporarily
+On `prod-clean`, the five other featured targets are marked **Temporarily
 Unavailable**. They remain visible in the catalogue but their action buttons are
 disabled, so visitors are not sent to a missing cache.
 
@@ -219,10 +219,10 @@ The first request for any field that is not bundled will query IRSA and cache th
 result under `wiseview/data`. On Render that data is ephemeral unless a disk is
 attached.
 
-Only the branch tip is trimmed. Older commits in this repository still contain
-the original 732 MB cache, so a fresh `git clone` downloads that history. If the
-clone size becomes a problem, rewrite history with `git filter-repo` or push
-`prod` as an orphan branch. That is a separate, destructive decision.
+`prod-clean` is an orphan branch: it has one commit and no history. A fresh clone
+is about 67 MB of tree plus about 26 MB of packed objects, so Render no longer
+downloads the old 732 MB cache. The full-history branches (`krish-core`, `main`,
+`dev`, `prod`) still contain that data; keep them for development only.
 
 ---
 
@@ -277,6 +277,19 @@ No code changes are needed. The frontend uses relative API and media URLs.
 
 Push to the connected branch. Render rebuilds and redeploys automatically by
 default.
+
+Because `prod-clean` is an orphan with a single commit, handle it as a deploy
+branch only. Make changes in the full-history worktree (`krish-core` or `prod`),
+then copy the files into the `prod-clean` worktree and commit there:
+
+```powershell
+cd ..\NASA-space-app-challage-2026-prod
+git checkout prod-clean
+# copy changed files from the development worktree
+git add -A
+git commit -m "chore: update prod deployment"
+git push
+```
 
 Before pushing:
 
