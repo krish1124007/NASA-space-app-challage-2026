@@ -3,7 +3,10 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $Root
 
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 $HasDeps = & python -c "import flask, astropy, requests; print('OK')" 2>$null
+$ErrorActionPreference = $prevEAP
 if ($HasDeps -eq "OK") {
     Write-Host "System Python verified with all required scientific libraries." -ForegroundColor Green
     $PyCmd = "python"
