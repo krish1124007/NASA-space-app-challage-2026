@@ -29,7 +29,8 @@ _FALLBACK_TARGETS: List[Dict[str, Any]] = [
         "id": "cached_m101",
         "name": "M101 region (cached)",
         "classification": "Cached SPHEREx field",
-        "description": "Offline-cached SPHEREx field near M101 (12 visits, D1-D6, 600 arcsec). Works without IRSA.",
+        "available": True,
+        "description": "Offline-cached SPHEREx field near M101 (12 visits, D2, 600 arcsec). Works without IRSA.",
         "category": "variable",
         "coordinates": {"ra_deg": 210.80227, "dec_deg": 54.34895, "ra_sexagesimal": "14h 03m 12.5s", "dec_sexagesimal": "+54 20 56"},
         "proper_motion": {"pm_ra_mas_yr": 0.0, "pm_dec_mas_yr": 0.0, "total_pm_arcsec_yr": 0.0},
@@ -41,8 +42,9 @@ _FALLBACK_TARGETS: List[Dict[str, Any]] = [
     {
         "id": "cached_hydra",
         "name": "Hydra field (cached)",
-        "classification": "Cached SPHEREx field",
-        "description": "Offline-cached SPHEREx field (12 visits, D1, 180 arcsec). Works without IRSA.",
+        "classification": "Temporarily unavailable",
+        "available": False,
+        "description": "This field is temporarily unavailable on the production deployment. Use the M101 field or try again later.",
         "category": "variable",
         "coordinates": {"ra_deg": 133.79513, "dec_deg": -7.24515, "ra_sexagesimal": "08h 55m 10.8s", "dec_sexagesimal": "-07 14 42.5"},
         "proper_motion": {"pm_ra_mas_yr": 0.0, "pm_dec_mas_yr": 0.0, "total_pm_arcsec_yr": 0.0},
@@ -54,8 +56,9 @@ _FALLBACK_TARGETS: List[Dict[str, Any]] = [
     {
         "id": "cached_coma",
         "name": "Coma field (cached)",
-        "classification": "Cached SPHEREx field",
-        "description": "Offline-cached SPHEREx field (12 visits, D6, 180 arcsec). Works without IRSA.",
+        "classification": "Temporarily unavailable",
+        "available": False,
+        "description": "This field is temporarily unavailable on the production deployment. Use the M101 field or try again later.",
         "category": "variable",
         "coordinates": {"ra_deg": 210.79544, "dec_deg": 20.35342, "ra_sexagesimal": "14h 03m 10.9s", "dec_sexagesimal": "+20 21 12.3"},
         "proper_motion": {"pm_ra_mas_yr": 0.0, "pm_dec_mas_yr": 0.0, "total_pm_arcsec_yr": 0.0},
@@ -67,8 +70,9 @@ _FALLBACK_TARGETS: List[Dict[str, Any]] = [
     {
         "id": "cached_cvna",
         "name": "Canes Venatici field A (cached)",
-        "classification": "Cached SPHEREx field",
-        "description": "Offline-cached SPHEREx field (12 visits, D1/D6, 120 arcsec). Works without IRSA.",
+        "classification": "Temporarily unavailable",
+        "available": False,
+        "description": "This field is temporarily unavailable on the production deployment. Use the M101 field or try again later.",
         "category": "variable",
         "coordinates": {"ra_deg": 210.79544, "dec_deg": 40.35342, "ra_sexagesimal": "14h 03m 10.9s", "dec_sexagesimal": "+40 21 12.3"},
         "proper_motion": {"pm_ra_mas_yr": 0.0, "pm_dec_mas_yr": 0.0, "total_pm_arcsec_yr": 0.0},
@@ -80,8 +84,9 @@ _FALLBACK_TARGETS: List[Dict[str, Any]] = [
     {
         "id": "cached_cvnb",
         "name": "Canes Venatici field B (cached)",
-        "classification": "Cached SPHEREx field",
-        "description": "Offline-cached SPHEREx field (D2 12 visits, D1 11 visits, 120 arcsec). Works without IRSA.",
+        "classification": "Temporarily unavailable",
+        "available": False,
+        "description": "This field is temporarily unavailable on the production deployment. Use the M101 field or try again later.",
         "category": "variable",
         "coordinates": {"ra_deg": 210.80227, "dec_deg": 40.34895, "ra_sexagesimal": "14h 03m 12.5s", "dec_sexagesimal": "+40 20 56.2"},
         "proper_motion": {"pm_ra_mas_yr": 0.0, "pm_dec_mas_yr": 0.0, "total_pm_arcsec_yr": 0.0},
@@ -93,8 +98,9 @@ _FALLBACK_TARGETS: List[Dict[str, Any]] = [
     {
         "id": "cached_m101b",
         "name": "M101 offset (cached)",
-        "classification": "Cached SPHEREx field",
-        "description": "Offline-cached SPHEREx field (D1 11 visits, D2 12 visits, 120 arcsec). Works without IRSA.",
+        "classification": "Temporarily unavailable",
+        "available": False,
+        "description": "This field is temporarily unavailable on the production deployment. Use the M101 field or try again later.",
         "category": "variable",
         "coordinates": {"ra_deg": 210.86928, "dec_deg": 54.40161, "ra_sexagesimal": "14h 03m 28.6s", "dec_sexagesimal": "+54 24 05.8"},
         "proper_motion": {"pm_ra_mas_yr": 0.0, "pm_dec_mas_yr": 0.0, "total_pm_arcsec_yr": 0.0},
@@ -131,6 +137,7 @@ def _normalise(raw: Dict[str, Any]) -> Dict[str, Any]:
     coords = raw.get("coordinates") or {}
     motion = raw.get("proper_motion") or {}
     category = raw.get("category") or "moving"
+    available = raw.get("available", True)
     fov = float(raw.get("fov_arcmin") or 10.0)
     detector = raw.get("default_detector") or "D2"
     cached_visits = raw.get("cached_visits")
@@ -148,7 +155,8 @@ def _normalise(raw: Dict[str, Any]) -> Dict[str, Any]:
         "classification": raw.get("classification") or "",
         "description": raw.get("description") or "",
         "category": category,
-        "badge": "Moving Source" if category == "moving" else "Variable Source",
+        "available": available,
+        "badge": "Temporarily Down" if not available else ("Moving Source" if category == "moving" else "Variable Source"),
         "ra_deg": ra,
         "dec_deg": dec,
         "ra_sexagesimal": coords.get("ra_sexagesimal") or "",

@@ -136,18 +136,18 @@
             <h2 id="featured-title">Featured Scientific Targets</h2>
             <p>Preconfigured astronomical benchmark sources demonstrating extreme proper motion and photometric variability.</p>
           </div>
-          <span class="section-meta">{{ targets | length }} Benchmark Targets Loaded &middot; 1 Custom Field</span>
+          <span class="section-meta">{{ targets | selectattr('available') | list | length }} Available &middot; {{ targets | rejectattr('available') | list | length }} Temporarily Down &middot; 1 Custom Field</span>
         </div>
 
         <div class="target-grid">
           {% for t in targets %}
-          <article class="target-card">
+          <article class="target-card{% if not t.available %} is-unavailable{% endif %}">
             <div class="card-head">
               <div class="card-ident">
                 <h3>{{ t.name }}</h3>
                 <p class="card-class">{{ t.classification }}</p>
               </div>
-              <span class="badge badge-{{ t.category }}">{{ t.badge }}</span>
+              <span class="badge badge-{{ t.category }}{% if not t.available %} badge-down{% endif %}">{{ t.badge }}</span>
             </div>
 
             <p class="card-desc">{{ t.description }}</p>
@@ -164,6 +164,7 @@
             </div>
 
             <div class="card-actions">
+              {% if t.available %}
               <a class="card-btn" href="{{ t.href_explorer }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="m3 21 8.5-8.5"></path>
@@ -186,6 +187,9 @@
                 </svg>
                 Spectrum
               </a>
+              {% else %}
+              <span class="card-btn disabled" aria-disabled="true">Temporarily Unavailable</span>
+              {% endif %}
             </div>
           </article>
           {% endfor %}

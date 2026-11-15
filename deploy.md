@@ -198,26 +198,27 @@ index files are optional. If they are missing, `/api/health` reports
 
 ## 7. Persistent disk and the 732 MB data directory
 
-The working tree contains a large cached dataset:
+The `prod` branch intentionally tracks only one cached field:
 
 ```text
-wiseview/data       ~732 MB
-wiseview overall    ~1.25 GB
+wiseview/data/spherex/ra210.8023_decp54.3490/
+  manifest.json
+  manifest_D2.json
+  cutouts/D2_*.fits
+  frames/D2_*
+wiseview/data/gaia/ra210.8023_decp54.3490_r0.0500.json
 ```
 
-`wiseview/data` is tracked in Git. That means Render clones and builds it on
-every deploy. Options:
+That is about 66 MB. The other cached fields are kept on the development branch
+and local working copy, but are not part of the `prod` deployment.
 
-1. **Keep it** if build time and disk cost are acceptable.
-2. **Remove cached data from Git** and let IRSA regenerate it on demand.
-3. **Move cached data to object storage** and download only what is needed.
+On `prod`, the five other featured targets are marked **Temporarily
+Unavailable**. They remain visible in the catalogue but their action buttons are
+disabled, so visitors are not sent to a missing cache.
 
-Do not delete the local data until you decide how cached target fields should be
-handled. The bundled targets include cached SPHEREx fields and a cached Gaia
-cone; removing them changes first-request behavior.
-
-If you use a persistent disk, remember that a new disk starts empty. Copy any
-data you need into `/var/data`, or let the app regenerate it.
+The first request for any field not included in `prod` will query IRSA and cache
+the result in `WV_DATA_DIR`. If you use a persistent disk, a new disk starts
+empty; the app fills it on demand.
 
 ---
 

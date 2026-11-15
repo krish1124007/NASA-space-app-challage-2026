@@ -440,6 +440,18 @@ body.home-page {
     background: rgba(11, 17, 24, 0.55);
 }
 .target-card.custom:hover { border-color: rgba(138, 180, 224, 0.5); }
+.target-card.is-unavailable {
+    border-style: dashed;
+    background: rgba(11, 17, 24, 0.55);
+}
+.target-card.is-unavailable:hover {
+    border-color: var(--wv-border);
+    background: rgba(11, 17, 24, 0.55);
+}
+.target-card.is-unavailable .card-ident h3,
+.target-card.is-unavailable:hover .card-ident h3 {
+    color: var(--wv-muted);
+}
 
 .card-head {
     display: flex;
@@ -477,6 +489,7 @@ body.home-page {
 .badge-moving { color: var(--wv-blue); background: rgba(138, 180, 224, 0.09); border-color: rgba(138, 180, 224, 0.3); }
 .badge-variable { color: var(--wv-warning); background: rgba(224, 177, 90, 0.09); border-color: rgba(224, 177, 90, 0.32); }
 .badge-custom { color: var(--wv-cyan); background: rgba(95, 211, 166, 0.09); border-color: rgba(95, 211, 166, 0.32); }
+.badge-down { color: var(--wv-muted); background: rgba(255, 255, 255, 0.03); border-color: var(--wv-border); }
 
 .card-desc {
     margin: 12px 0 0;
@@ -549,6 +562,18 @@ body.home-page {
     font-weight: 600;
 }
 .card-btn.primary:hover { background: rgba(138, 180, 224, 0.2); }
+.card-btn.disabled {
+    flex: 1 1 100%;
+    cursor: not-allowed;
+    color: var(--wv-muted) !important;
+    border-style: dashed;
+    background: rgba(11, 17, 24, 0.55);
+}
+.card-btn.disabled:hover {
+    border-color: var(--wv-border);
+    background: rgba(11, 17, 24, 0.55);
+    color: var(--wv-muted) !important;
+}
 
 /* --------------------------------------------------------------- telemetry */
 
