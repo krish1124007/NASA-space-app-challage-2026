@@ -2,14 +2,15 @@
 
 This guide deploys the Flask WiseView application in `wiseview/` to Render as a
 single Python web service. The service serves both the classic WiseView UI and
-the bundled SPHEREx Explorer React build:
+the classic WiseView UI. The React Explorer is optional and is not built by this
+branch:
 
 | Route | Content |
 |-------|---------|
 | `/` | Classic WiseView homepage |
 | `/viewer` | Classic WiseView viewer |
 | `/spectrum` | Classic WiseView spectrum view |
-| `/explorer` | SPHEREx Explorer React app |
+| `/explorer` | SPHEREx Explorer React app if a build is present; otherwise redirects to `/viewer` |
 | `/api/*` | Flask API |
 | `/media/*` | Cached FITS/PNG media |
 | `/legacy`, `/legacy/viewer`, `/legacy/spectrum` | Redirects to the new routes |
@@ -61,7 +62,7 @@ Expected:
 
 - `/` shows the classic WiseView homepage.
 - `/viewer` opens the flash3 control surface.
-- `/explorer` shows the React SPHEREx Explorer.
+- `/explorer` redirects to `/viewer` unless a React build is committed.
 - `/legacy` redirects to `/`.
 - `/legacy/viewer` redirects to `/viewer`.
 - `/api/health` returns JSON with `"status": "ok"`.
@@ -244,7 +245,7 @@ Then open in a browser:
 
 - `/` classic landing page
 - `/viewer` SPHEREx/unWISE viewer
-- `/explorer` React explorer
+- `/explorer` redirects to `/viewer` (no React build in this branch)
 - a target card from the homepage
 
 If the viewer loads but images do not, check Render logs for IRSA download
