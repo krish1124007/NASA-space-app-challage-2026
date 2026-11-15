@@ -3,6 +3,7 @@ services:
     name: wiseview
     runtime: python
     plan: starter
+    branch: krish-core
     rootDir: wiseview
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wv.www.unoverse:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 180 --access-logfile -
@@ -10,9 +11,3 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.5
-      - key: WV_DATA_DIR
-        value: /var/data
-    disk:
-      name: wiseview-data
-      mountPath: /var/data
-      sizeGB: 1
